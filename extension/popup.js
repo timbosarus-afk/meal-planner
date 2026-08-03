@@ -1,9 +1,7 @@
-// v0 scope: fetch recipes, build a consolidated shopping list, and for each
-// item let you copy the name + open Sainsbury's so you can search and add
-// manually. This is deliberately NOT auto-clicking "add to basket" yet —
-// that needs us to map Sainsbury's real search URL and button markup
-// together first (see README). This v0 still saves you the recipe-lookup
-// and consolidation work, which is most of the manual effort anyway.
+// v0.2 scope: fetch recipes, build a consolidated shopping list, and for
+// each item open Sainsbury's real search results (now that we have the
+// URL pattern). content.js then highlights the Add button on that page.
+// Still NOT auto-clicking add-to-basket — see content.js for why.
 
 const apiUrlInput = document.getElementById('apiUrl');
 const statusEl = document.getElementById('status');
@@ -90,10 +88,8 @@ function renderList(items) {
   listResultsEl.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       navigator.clipboard.writeText(btn.dataset.item);
-      // Placeholder destination until we've confirmed Sainsbury's real
-      // search URL together — opens the grocery homepage for now so you
-      // can paste the copied item name into their search bar yourself.
-      chrome.tabs.create({ url: 'https://www.sainsburys.co.uk/gol-ui/groceries' });
+      const searchUrl = `https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(btn.dataset.item)}`;
+      chrome.tabs.create({ url: searchUrl });
       document.getElementById(`item-${btn.dataset.idx}`).classList.add('done');
     });
   });
