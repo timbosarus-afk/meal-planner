@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "meal-planner shopping assistant",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Builds your shopping list, opens Sainsbury's search for each item, and highlights the Add button. Auto-add coming once product matching is solid.",
   "action": { "default_popup": "popup.html" },
   "permissions": ["storage", "tabs"],
