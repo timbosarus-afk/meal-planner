@@ -56,7 +56,8 @@ async function loadRecipes() {
 
     recipeListEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', saveSelectedRecipes));
   } catch (err) {
-    recipeListEl.textContent = 'Could not reach the API — check the URL above.';
+    console.error('meal-planner: recipe fetch failed', err);
+    recipeListEl.textContent = `Could not reach the API: ${err.message}`;
   }
 }
 
