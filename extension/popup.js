@@ -1,8 +1,7 @@
-// v0.3 scope: same as before, but now persists state to chrome.storage.local
-// so closing/reopening the popup doesn't lose your selections or which
-// items you've already worked through. Chrome throws away everything in
-// popup memory the instant it closes — nothing survives unless it's
-// explicitly saved, which the earlier version wasn't doing.
+// v0.4 scope: reuses a single shopping tab instead of spawning one per item
+// (big speed/clutter improvement), and adds an "Always have" button per
+// item that permanently excludes it from future shopping lists via the
+// staples table — the answer to "what about salt and pepper".
 
 const apiUrlInput = document.getElementById('apiUrl');
 const statusEl = document.getElementById('status');
@@ -99,21 +98,69 @@ async function markDone(itemName) {
   }
 }
 
+// Reuses one dedicated shopping tab across all items instead of spawning a
+// new tab per click — going through a 15-20 item list used to leave you
+// with 15-20 open tabs, which was both slow and messy to navigate.
+async function openInShoppingTab(url) {
+  const { shoppingTabId } = await chrome.storage.local.get('shoppingTabId');
+
+  if (shoppingTabId) {
+    try {
+      await chrome.tabs.update(shoppingTabId, { url, active: true });
+      return;
+    } catch (err) {
+      // Tab was closed since last time — fall through and open a fresh one
+    }
+  }
+
+  const tab = await chrome.tabs.create({ url });
+  await chrome.storage.local.set({ shoppingTabId: tab.id });
+}
+
+// Marks an item as a permanent staple (e.g. salt, pepper, oil) — excluded
+// from every future generated list. Removes it from the current list too
+// since you clearly don't need to shop for it this week either.
+async function markAsStaple(itemName, apiUrl) {
+  try {
+    await fetch(`${apiUrl}/api/staples`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemName })
+    });
+  } catch (err) {
+    console.error('meal-planner: failed to save staple', err);
+  }
+}
+
 function renderList(items, doneItems) {
   listResultsEl.innerHTML = items.map((item, i) => `
     <div class="item-row ${doneItems.includes(item.item) ? 'done' : ''}" id="item-${i}">
       <span>${item.quantity ? `${item.quantity}${item.unit || ''} ` : ''}${escapeHtml(item.item)}</span>
-      <button data-item="${escapeHtml(item.item)}" data-idx="${i}">Copy + open</button>
+      <span>
+        <button data-item="${escapeHtml(item.item)}" data-idx="${i}" class="open-btn">Copy + open</button>
+        <button data-item="${escapeHtml(item.item)}" data-idx="${i}" class="staple-btn" title="Always have this — exclude from future lists">Always have</button>
+      </span>
     </div>
   `).join('');
 
-  listResultsEl.querySelectorAll('button').forEach(btn => {
+  listResultsEl.querySelectorAll('.open-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       navigator.clipboard.writeText(btn.dataset.item);
       const searchUrl = `https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(btn.dataset.item)}`;
-      chrome.tabs.create({ url: searchUrl });
+      await openInShoppingTab(searchUrl);
       document.getElementById(`item-${btn.dataset.idx}`).classList.add('done');
       await markDone(btn.dataset.item);
+    });
+  });
+
+  listResultsEl.querySelectorAll('.staple-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const apiUrl = await getApiUrl();
+      if (!apiUrl) return;
+      await markAsStaple(btn.dataset.item, apiUrl);
+      const row = document.getElementById(`item-${btn.dataset.idx}`);
+      row.style.opacity = '0.3';
+      row.querySelectorAll('button').forEach(b => b.disabled = true);
     });
   });
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  body { width: 340px; font-family: -apple-system, sans-serif; margin: 0; padding: 12px; background: #F5F7F2; color: #1F2A1E; }
+  body { width: 380px; font-family: -apple-system, sans-serif; margin: 0; padding: 12px; background: #F5F7F2; color: #1F2A1E; }
   h1 { font-size: 14px; margin: 0 0 10px; }
   .settings { font-size: 11px; margin-bottom: 10px; }
   .settings input { width: 100%; box-sizing: border-box; padding: 5px; font-size: 11px; margin-top: 3px; }
@@ -11,11 +11,13 @@
   label { font-size: 11px; color: #6B7566; }
   input[type=number] { width: 50px; padding: 4px; }
   button { background: #2F5233; color: #fff; border: none; border-radius: 6px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
-  .item-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 5px 0; border-bottom: 1px dashed #C9D0C2; }
-  .item-row button { width: auto; margin: 0; padding: 4px 8px; font-size: 11px; background: #D9A441; color: #1F2A1E; }
+  .item-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 5px 0; border-bottom: 1px dashed #C9D0C2; gap: 8px; }
+  .item-row span:first-child { flex: 1; }
+  .item-row .open-btn { width: auto; margin: 0; padding: 4px 8px; font-size: 11px; background: #D9A441; color: #1F2A1E; }
+  .item-row .staple-btn { width: auto; margin: 0; padding: 4px 6px; font-size: 10px; background: transparent; color: #6B7566; border: 1px solid #C9D0C2; }
   .item-row.done { opacity: 0.4; text-decoration: line-through; }
   .status { font-size: 11px; margin-top: 6px; color: #6B7566; }
-  #recipeList, #listResults { max-height: 220px; overflow-y: auto; margin-top: 6px; }
+  #recipeList, #listResults { max-height: 260px; overflow-y: auto; margin-top: 6px; }
 </style>
 </head>
 <body>
