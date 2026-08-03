@@ -1,10 +1,11 @@
-// Vercel serverless function — POST { "url": "https://..." } to scrape a recipe.
+// Vercel serverless function — POST { "url": "https://..." } to scrape a recipe
+// AND save it to Supabase in one step.
 //
-// Requires ANTHROPIC_API_KEY set in Vercel project env vars (Settings > Environment
-// Variables) — only used when a site doesn't have JSON-LD and we fall back to
-// Claude parsing the page text.
+// Requires env vars (set in Vercel dashboard):
+//   ANTHROPIC_API_KEY — only used for sites without JSON-LD
+//   SUPABASE_URL, SUPABASE_ANON_KEY — from the meal-planner Supabase project
 
-const { scrapeRecipe } = require('../lib/scrape-recipe');
+const { scrapeAndSaveRecipe } = require('../lib/scrape-recipe');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const recipe = await scrapeRecipe(url);
+    const recipe = await scrapeAndSaveRecipe(url);
     res.status(200).json(recipe);
   } catch (err) {
     console.error('Scrape failed:', err);
