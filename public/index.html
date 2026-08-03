@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>meal-planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F5F7F2;
+    --ink: #1F2A1E;
+    --forest: #2F5233;
+    --forest-dark: #223D26;
+    --mustard: #D9A441;
+    --line: #C9D0C2;
+    --muted: #6B7566;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 4rem;
+  }
+  header {
+    background: var(--forest);
+    color: var(--paper);
+    padding: 1.5rem 1.25rem 1.75rem;
+  }
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+    color: #C9D9C5;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 1rem; }
+  section {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 1.1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(31,42,30,0.08);
+  }
+  section h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+  }
+  input[type=text], input[type=number], input[type=url] {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  input:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 9px;
+    padding: 0.7rem 1.1rem;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--forest); color: #fff; }
+  .btn-primary:active { background: var(--forest-dark); }
+  .btn-secondary { background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); }
+  .btn-full { width: 100%; margin-top: 0.6rem; }
+  .row { display: flex; gap: 0.5rem; }
+  .status { font-size: 0.85rem; margin-top: 0.5rem; }
+  .status.error { color: #B3432B; }
+  .status.ok { color: var(--forest); }
+  .recipe-item {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    padding: 0.65rem 0; border-bottom: 1px solid var(--line);
+  }
+  .recipe-item:last-child { border-bottom: none; }
+  .recipe-item input[type=checkbox] { margin-top: 0.2rem; width: 18px; height: 18px; accent-color: var(--forest); }
+  .recipe-title { font-weight: 500; font-size: 0.95rem; }
+  .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+  .empty { color: var(--muted); font-size: 0.88rem; font-style: italic; }
+
+  /* Signature element: shopping list rendered like a till receipt */
+  #shoppingListWrap { display: none; }
+  .receipt {
+    background: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 1.25rem 1rem 1.5rem;
+    border-radius: 2px;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(31,42,30,0.08);
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 8px), transparent 100%),
+      repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 12px);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .receipt-header { text-align: center; margin-bottom: 0.9rem; }
+  .receipt-header .r-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.15rem; }
+  .receipt-header .r-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
+  .receipt-divider { border-top: 1px dashed var(--line); margin: 0.6rem 0; }
+  .receipt-line {
+    display: flex; justify-content: space-between; gap: 0.75rem;
+    font-size: 0.85rem; padding: 0.3rem 0;
+  }
+  .receipt-line .qty { color: var(--forest); white-space: nowrap; }
+  .receipt-line .used-in { display: block; font-size: 0.68rem; color: var(--muted); font-family: 'Inter', sans-serif; margin-top: 0.1rem; }
+  .receipt-excluded { font-size: 0.72rem; color: var(--muted); margin-top: 0.8rem; font-family: 'Inter', sans-serif; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>meal-planner</h1>
+  <p>Import recipes, pick your week, get a shopping list.</p>
+</header>
+
+<main>
+
+  <section>
+    <h2>Import a recipe</h2>
+    <input type="url" id="recipeUrl" placeholder="Paste a recipe URL">
+    <button class="btn-primary btn-full" onclick="importRecipe()">Import</button>
+    <div id="importStatus" class="status"></div>
+  </section>
+
+  <section>
+    <h2>Your recipes</h2>
+    <div id="recipeList" class="empty">Loading…</div>
+  </section>
+
+  <section>
+    <h2>This week</h2>
+    <label style="font-size:0.85rem; color:var(--muted);">Servings needed</label>
+    <input type="number" id="servingsTarget" value="2" min="1" style="margin-top:0.3rem;">
+    <button class="btn-primary btn-full" onclick="generateList()">Generate shopping list</button>
+    <div id="listStatus" class="status"></div>
+  </section>
+
+  <div id="shoppingListWrap">
+    <div class="receipt" id="receipt"></div>
+  </div>
+
+</main>
+
+<script>
+const API = ''; // same-origin — relative paths work since this page is served from the same Vercel project
+
+let recipes = [];
+
+async function loadRecipes() {
+  const el = document.getElementById('recipeList');
+  try {
+    const res = await fetch(`${API}/api/recipes`);
+    recipes = await res.json();
+    if (!recipes.length) {
+      el.innerHTML = '<div class="empty">No recipes yet — import one above.</div>';
+      return;
+    }
+    el.innerHTML = recipes.map(r => `
+      <div class="recipe-item">
+        <input type="checkbox" value="${r.id}" id="r-${r.id}">
+        <label for="r-${r.id}" style="flex:1;">
+          <div class="recipe-title">${escapeHtml(r.title)}</div>
+          <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : 'servings unknown'}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
+        </label>
+      </div>
+    `).join('');
+  } catch (err) {
+    el.innerHTML = '<div class="status error">Couldn\'t load recipes — check the API is deployed.</div>';
+  }
+}
+
+async function importRecipe() {
+  const urlInput = document.getElementById('recipeUrl');
+  const status = document.getElementById('importStatus');
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  status.textContent = 'Importing…';
+  status.className = 'status';
+
+  try {
+    const res = await fetch(`${API}/api/scrape-recipe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Import failed');
+
+    if (data.needsBrowser) {
+      status.textContent = "This site needs JS rendering to scrape — not supported yet (e.g. Sainsbury's recipe pages).";
+      status.className = 'status error';
+      return;
+    }
+
+    status.textContent = `Saved: ${data.title}${data.confidence === 'low' ? ' (low confidence — worth checking the ingredients)' : ''}`;
+    status.className = 'status ok';
+    urlInput.value = '';
+    loadRecipes();
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status error';
+  }
+}
+
+async function generateList() {
+  const checked = [...document.querySelectorAll('#recipeList input[type=checkbox]:checked')].map(c => c.value);
+  const status = document.getElementById('listStatus');
+  const servingsTarget = parseInt(document.getElementById('servingsTarget').value, 10) || 2;
+
+  if (!checked.length) {
+    status.textContent = 'Tick at least one recipe first.';
+    status.className = 'status error';
+    return;
+  }
+
+  status.textContent = 'Building your list…';
+  status.className = 'status';
+
+  try {
+    const res = await fetch(`${API}/api/shopping-list`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeIds: checked, servingsTarget })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to build list');
+
+    renderReceipt(data);
+    status.textContent = '';
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status error';
+  }
+}
+
+function renderReceipt(data) {
+  const wrap = document.getElementById('shoppingListWrap');
+  const receipt = document.getElementById('receipt');
+  const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+
+  const lines = data.shoppingList.map(item => `
+    <div class="receipt-line">
+      <span>
+        ${escapeHtml(item.item)}
+        <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
+      </span>
+      <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
+    </div>
+  `).join('<div class="receipt-divider"></div>');
+
+  const excluded = data.excludedAsStaples.length
+    ? `<div class="receipt-excluded">Excluded (staples): ${data.excludedAsStaples.map(escapeHtml).join(', ')}</div>`
+    : '';
+
+  receipt.innerHTML = `
+    <div class="receipt-header">
+      <div class="r-title">Shopping List</div>
+      <div class="r-sub">${date} · serves ${data.servingsTarget} · ${data.recipeCount} recipe${data.recipeCount === 1 ? '' : 's'}</div>
+    </div>
+    <div class="receipt-divider"></div>
+    ${lines}
+    ${excluded}
+  `;
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth' });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+loadRecipes();
+</script>
+
+</body>
+</html>

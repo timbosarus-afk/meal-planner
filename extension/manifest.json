@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "meal-planner shopping assistant",
+  "version": "0.1.0",
+  "description": "v0: builds your shopping list and helps you copy items into Sainsbury's search. Auto add-to-basket comes once we've mapped their page structure together.",
+  "action": { "default_popup": "popup.html" },
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://*/*"]
+}
