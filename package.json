@@ -1,0 +1,9 @@
+{
+  "name": "meal-planner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Replaces HelloFresh/Green Chef — import recipes, build weekly shopping lists, order via browser extension",
+  "engines": {
+    "node": ">=18"
+  }
+}
