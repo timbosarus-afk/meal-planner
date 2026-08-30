@@ -95,7 +95,24 @@
   .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
   .empty { color: var(--muted); font-size: 0.88rem; font-style: italic; }
 
-  /* Shopping list rendered like a till receipt */
+  /* Staples management — pill list with an add box, always editable
+     directly rather than only reachable by tapping "Always have" on a
+     generated list item */
+  .staple-pill-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
+  .staple-pill {
+    display: flex; align-items: center; gap: 0.35rem;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.3rem 0.4rem 0.3rem 0.7rem; font-size: 0.8rem;
+  }
+  .staple-pill button {
+    background: none; border: none; padding: 0; width: 18px; height: 18px;
+    border-radius: 50%; color: var(--muted); font-size: 0.85rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .staple-pill button:active { background: var(--line); }
+
+  /* Shopping list rendered like a till receipt, grouped into collapsible
+     category sections */
   .receipt {
     background: #fff;
     font-family: 'JetBrains Mono', monospace;
@@ -116,6 +133,18 @@
   .receipt-header .r-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.15rem; }
   .receipt-header .r-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
   .receipt-divider { border-top: 1px dashed var(--line); margin: 0.6rem 0; }
+
+  .category-group { margin-bottom: 0.3rem; }
+  .category-group summary {
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.03em; color: var(--forest);
+    cursor: pointer; padding: 0.5rem 0; list-style: none;
+  }
+  .category-group summary::-webkit-details-marker { display: none; }
+  .category-group summary::before { content: '▸ '; }
+  .category-group[open] summary::before { content: '▾ '; }
+  .category-group summary .count { color: var(--muted); font-weight: 400; text-transform: none; }
+
   .receipt-line {
     display: flex; justify-content: space-between; align-items: center; gap: 0.6rem;
     font-size: 0.83rem; padding: 0.35rem 0;
@@ -129,7 +158,14 @@
   }
   .btn-gotit { background: var(--mustard); color: var(--ink); }
   .btn-staple { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-  .receipt-excluded { font-size: 0.7rem; color: var(--muted); margin-top: 0.8rem; font-family: 'Inter', sans-serif; }
+
+  .sorted-section { margin-top: 1rem; font-family: 'Inter', sans-serif; }
+  .sorted-section summary { font-size: 0.75rem; color: var(--muted); cursor: pointer; }
+  .sorted-line {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.78rem; padding: 0.3rem 0; color: var(--muted);
+  }
+  .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 6px; }
 
   .plan-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 0.8rem; margin-bottom: 0.6rem; cursor: pointer; }
   .plan-card:active { background: var(--paper); }
@@ -159,6 +195,15 @@
     <input type="url" id="recipeUrl" placeholder="Paste a recipe URL">
     <button class="btn-primary btn-full" onclick="importRecipe()">Import</button>
     <div id="importStatus" class="status"></div>
+  </section>
+
+  <section>
+    <h2>Staples — always have these</h2>
+    <div id="stapleList" class="staple-pill-list"></div>
+    <div class="row">
+      <input type="text" id="newStaple" placeholder="e.g. salt, sugar, olive oil">
+      <button class="btn-primary" onclick="addStaple()">Add</button>
+    </div>
   </section>
 
   <!-- Picker: shown only when there's no in-progress plan -->
@@ -197,6 +242,53 @@ const API = ''; // same-origin
 
 let recipes = [];
 let currentPlan = null;
+
+// ---------- Staples management ----------
+
+async function loadStaples() {
+  const res = await fetch(`${API}/api/staples`);
+  const staples = await res.json();
+  const el = document.getElementById('stapleList');
+
+  if (!staples.length) {
+    el.innerHTML = '<span class="empty">No staples yet — add things like salt, sugar, oil below.</span>';
+    return;
+  }
+
+  el.innerHTML = staples.map(s => `
+    <span class="staple-pill">
+      ${escapeHtml(s.item_name)}
+      <button onclick="removeStaple('${s.id}')" title="Remove">&times;</button>
+    </span>
+  `).join('');
+}
+
+async function addStaple() {
+  const input = document.getElementById('newStaple');
+  const itemName = input.value.trim();
+  if (!itemName) return;
+
+  await fetch(`${API}/api/staples`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemName })
+  });
+  input.value = '';
+  loadStaples();
+  if (currentPlan) loadActivePlanList(); // re-filter the active list if a staple was just added
+}
+
+async function removeStaple(id) {
+  await fetch(`${API}/api/staples`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadStaples();
+  if (currentPlan) loadActivePlanList();
+}
+
+// ---------- Recipes & picker ----------
 
 async function loadRecipes() {
   const res = await fetch(`${API}/api/recipes`);
@@ -288,6 +380,8 @@ async function startPlan() {
   }
 }
 
+// ---------- Active plan shopping list ----------
+
 async function loadActivePlanList() {
   const res = await fetch(`${API}/api/weekly-plan-shopping-list?id=${currentPlan.id}`);
   const data = await res.json();
@@ -298,24 +392,46 @@ async function loadActivePlanList() {
 function renderReceipt(data) {
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 
-  const lines = data.shoppingList.map(item => `
-    <div class="receipt-line" data-item="${escapeHtml(item.item)}">
-      <span class="item-info">
-        ${escapeHtml(item.item)}
-        <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
-      </span>
-      <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
-      <span class="item-actions">
-        <button class="btn-gotit" onclick="markGotIt('${escapeHtml(item.item)}', this)">Got it</button>
-        <button class="btn-staple" onclick="markStaple('${escapeHtml(item.item)}', this)" title="Always have — never show again">Always have</button>
-      </span>
-    </div>
-  `).join('<div class="receipt-divider"></div>');
+  // Group by category, in a fixed sensible shopping order rather than
+  // alphabetical (fresh stuff first, cupboard stuff last)
+  const categoryOrder = ['Fruit & Veg', 'Meat & Fish', 'Dairy & Eggs', 'Bakery', 'Frozen', 'Store Cupboard', 'Herbs & Spices', 'Other'];
+  const grouped = {};
+  data.shoppingList.forEach(item => {
+    (grouped[item.category] = grouped[item.category] || []).push(item);
+  });
 
-  const excludedNote = [
-    data.excludedAsStaples.length ? `Staples: ${data.excludedAsStaples.join(', ')}` : null,
-    data.excludedAsAlreadyHave.length ? `Already have: ${data.excludedAsAlreadyHave.join(', ')}` : null
-  ].filter(Boolean).join(' · ');
+  const categoryHtml = categoryOrder
+    .filter(cat => grouped[cat] && grouped[cat].length)
+    .map(cat => `
+      <details class="category-group" open>
+        <summary>${cat} <span class="count">(${grouped[cat].length})</span></summary>
+        ${grouped[cat].map(item => `
+          <div class="receipt-line" data-item="${escapeHtml(item.item)}">
+            <span class="item-info">
+              ${escapeHtml(item.item)}
+              <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
+            </span>
+            <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
+            <span class="item-actions">
+              <button class="btn-gotit" onclick="markGotIt('${escapeHtml(item.item)}', this)">Got it</button>
+              <button class="btn-staple" onclick="markStaple('${escapeHtml(item.item)}', this)" title="Always have — never show again">Always have</button>
+            </span>
+          </div>
+        `).join('')}
+      </details>
+    `).join('');
+
+  const sortedThisWeek = data.excludedAsAlreadyHave.length
+    ? `<details class="sorted-section">
+        <summary>Already sorted this week (${data.excludedAsAlreadyHave.length}) — tap to view/undo</summary>
+        ${data.excludedAsAlreadyHave.map(name => `
+          <div class="sorted-line">
+            ${escapeHtml(name)}
+            <button onclick="undoGotIt('${escapeHtml(name)}')">Undo</button>
+          </div>
+        `).join('')}
+      </details>`
+    : '';
 
   document.getElementById('receiptWrap').innerHTML = `
     <div class="receipt">
@@ -324,8 +440,8 @@ function renderReceipt(data) {
         <div class="r-sub">${date} · serves ${data.servingsTarget} · ${data.recipeCount} recipe${data.recipeCount === 1 ? '' : 's'}</div>
       </div>
       <div class="receipt-divider"></div>
-      ${lines || '<div class="empty">Nothing left to buy — you have it all!</div>'}
-      ${excludedNote ? `<div class="receipt-excluded">${excludedNote}</div>` : ''}
+      ${categoryHtml || '<div class="empty">Nothing left to buy — you have it all!</div>'}
+      ${sortedThisWeek}
     </div>
   `;
 }
@@ -336,7 +452,16 @@ async function markGotIt(itemName, btn) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ planId: currentPlan.id, itemName })
   });
-  removeReceiptLine(btn);
+  loadActivePlanList(); // full re-render so it moves into "Already sorted"
+}
+
+async function undoGotIt(itemName) {
+  await fetch(`${API}/api/weekly-plan-exclude`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId: currentPlan.id, itemName })
+  });
+  loadActivePlanList();
 }
 
 async function markStaple(itemName, btn) {
@@ -345,14 +470,8 @@ async function markStaple(itemName, btn) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ itemName })
   });
-  removeReceiptLine(btn);
-}
-
-function removeReceiptLine(btn) {
-  const line = btn.closest('.receipt-line');
-  const divider = line.nextElementSibling;
-  line.remove();
-  if (divider && divider.classList.contains('receipt-divider')) divider.remove();
+  loadStaples();
+  loadActivePlanList();
 }
 
 async function markOrdered() {
@@ -378,6 +497,8 @@ async function markOrdered() {
     status.className = 'status error';
   }
 }
+
+// ---------- Past weeks ----------
 
 async function loadPastWeeks() {
   const res = await fetch(`${API}/api/weekly-plans`);
@@ -426,6 +547,7 @@ function escapeHtml(str) {
 }
 
 async function init() {
+  await loadStaples();
   await loadRecipes();
   const res = await fetch(`${API}/api/weekly-plans`);
   const plans = await res.json();
