@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>meal-planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --paper: #F5F7F2;
@@ -32,8 +32,8 @@
     padding: 1.25rem 1.25rem 1rem;
   }
   header h1 {
-    font-family: 'Fraunces', serif;
-    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
     font-size: 1.5rem;
     margin: 0;
     letter-spacing: -0.01em;
@@ -46,8 +46,8 @@
   }
   .tabbar button {
     flex: 1; background: none; border: none; border-radius: 0;
-    color: #C9D9C5; font-size: 0.8rem; font-weight: 600; padding: 0.75rem 0.4rem;
-    font-family: 'Inter', sans-serif; cursor: pointer;
+    color: #C9D9C5; font-size: 0.8rem; font-weight: 700; padding: 0.75rem 0.4rem;
+    font-family: 'Nunito', sans-serif; cursor: pointer;
   }
   .tabbar button.active { color: #fff; border-bottom: 3px solid var(--mustard); }
 
@@ -57,22 +57,22 @@
 
   section {
     background: var(--card);
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 1.1rem;
     margin-bottom: 1rem;
     box-shadow: 0 1px 3px rgba(31,42,30,0.08);
   }
   section h2 {
-    font-family: 'Fraunces', serif;
-    font-size: 1.05rem;
-    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
     margin: 0 0 0.75rem;
   }
   select, input[type=text], input[type=number], input[type=url] {
     width: 100%;
     padding: 0.7rem 0.85rem;
     border: 1.5px solid var(--line);
-    border-radius: 9px;
+    border-radius: 12px;
     font-size: 0.95rem;
     font-family: inherit;
     background: var(--paper);
@@ -80,47 +80,61 @@
   }
   input:focus, select:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
   button {
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
     font-size: 0.9rem;
     border: none;
-    border-radius: 9px;
-    padding: 0.7rem 1.1rem;
+    border-radius: 999px;
+    padding: 0.7rem 1.2rem;
     cursor: pointer;
   }
   .btn-primary { background: var(--forest); color: #fff; }
   .btn-primary:active { background: var(--forest-dark); }
   .btn-secondary { background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); }
   .btn-ai { background: var(--mustard); color: var(--ink); }
+  .btn-danger { background: #fff; color: #B3432B; border: 1.5px solid #B3432B; }
   .btn-full { width: 100%; margin-top: 0.6rem; }
-  .row { display: flex; gap: 0.5rem; }
+  .btn-sm { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
+  .row { display: flex; gap: 0.5rem; align-items: center; }
   .status { font-size: 0.85rem; margin-top: 0.5rem; }
   .status.error { color: #B3432B; }
   .status.ok { color: var(--forest); }
   .recipe-item {
-    display: flex; align-items: flex-start; gap: 0.6rem;
-    padding: 0.65rem 0; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--line);
   }
   .recipe-item:last-child { border-bottom: none; }
-  .recipe-item input[type=checkbox] { margin-top: 0.2rem; width: 18px; height: 18px; accent-color: var(--forest); }
-  .recipe-title { font-weight: 500; font-size: 0.95rem; }
-  .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+  .recipe-item .thumb-sm { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .recipe-item .thumb-sm-placeholder {
+    width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+  }
+  .recipe-title { font-weight: 700; font-size: 0.95rem; font-family: 'Nunito', sans-serif; }
+  .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
   .empty { color: var(--muted); font-size: 0.88rem; font-style: italic; }
 
   .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
-  .recipe-card { cursor: pointer; }
+  .recipe-card { position: relative; }
   .recipe-card .thumb {
-    width: 100%; aspect-ratio: 4/3; border-radius: 10px; object-fit: cover;
+    width: 100%; aspect-ratio: 4/3; border-radius: 14px; object-fit: cover;
     background: var(--paper); display: block;
   }
   .recipe-card .thumb-placeholder {
-    width: 100%; aspect-ratio: 4/3; border-radius: 10px;
+    width: 100%; aspect-ratio: 4/3; border-radius: 14px;
     background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
     display: flex; align-items: center; justify-content: center;
-    color: #C9D9C5; font-family: 'Fraunces', serif; font-size: 1.8rem;
+    color: #C9D9C5; font-size: 2rem;
   }
   .recipe-card .recipe-title { margin-top: 0.4rem; font-size: 0.85rem; }
   .recipe-card .recipe-meta { font-size: 0.72rem; }
+  .recipe-card .add-btn {
+    position: absolute; bottom: 0.5rem; right: 0.5rem;
+    background: var(--forest); color: #fff; width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; padding: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  }
+  .recipe-card .add-btn.added { background: var(--mustard); color: var(--ink); }
 
   .staple-pill-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
   .staple-pill {
@@ -141,7 +155,7 @@
     padding: 1.5rem 1rem 1.5rem;
     position: relative;
     box-shadow: 0 1px 3px rgba(31,42,30,0.08);
-    border-radius: 10px;
+    border-radius: 14px;
   }
   .receipt::before {
     content: '';
@@ -152,13 +166,13 @@
     background-repeat: repeat-x;
   }
   .receipt-header { text-align: center; margin-bottom: 0.9rem; }
-  .receipt-header .r-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.15rem; }
+  .receipt-header .r-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.15rem; }
   .receipt-header .r-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
   .receipt-divider { border-top: 1px dashed var(--line); margin: 0.6rem 0; }
 
   .category-group { margin-bottom: 0.3rem; }
   .category-group summary {
-    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.78rem;
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.78rem;
     text-transform: uppercase; letter-spacing: 0.03em; color: var(--forest);
     cursor: pointer; padding: 0.5rem 0; list-style: none;
   }
@@ -177,7 +191,7 @@
   .receipt-line .note { display: block; font-size: 0.66rem; color: var(--forest); font-family: 'Inter', sans-serif; margin-top: 0.1rem; font-style: italic; }
   .receipt-line .item-actions { display: flex; gap: 0.3rem; }
   .receipt-line .item-actions button {
-    font-family: 'Inter', sans-serif; font-size: 0.68rem; padding: 0.3rem 0.5rem; border-radius: 6px;
+    font-family: 'Inter', sans-serif; font-size: 0.68rem; padding: 0.3rem 0.5rem; border-radius: 999px;
   }
   .btn-gotit { background: var(--mustard); color: var(--ink); }
   .btn-staple { background: transparent; color: var(--muted); border: 1px solid var(--line); }
@@ -188,40 +202,52 @@
     display: flex; justify-content: space-between; align-items: center;
     font-size: 0.78rem; padding: 0.3rem 0; color: var(--muted);
   }
-  .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 6px; }
+  .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 999px; }
 
-  .batch-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 0.8rem; margin-bottom: 0.6rem; cursor: pointer; }
-  .batch-card:active { background: var(--paper); }
-  .batch-card .batch-date { font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
-  .batch-card .batch-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
-  .badge { font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+  /* Batch cards — HelloFresh-style: date header, horizontal photo strip, action button */
+  .batch-card {
+    background: var(--card); border-radius: 16px; padding: 1rem; margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(31,42,30,0.08);
+  }
+  .batch-card .batch-date-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
+  .batch-card .batch-date { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.05rem; }
+  .batch-card .batch-meta { font-size: 0.78rem; color: var(--muted); }
+  .photo-strip { display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.3rem; margin-bottom: 0.8rem; }
+  .photo-strip .strip-item { flex-shrink: 0; width: 84px; text-align: center; cursor: pointer; }
+  .photo-strip .strip-item img, .photo-strip .strip-item .strip-placeholder {
+    width: 84px; height: 84px; border-radius: 14px; object-fit: cover;
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
+    display: flex; align-items: center; justify-content: center; color: #C9D9C5; font-size: 1.6rem;
+  }
+  .photo-strip .strip-item .strip-name { font-size: 0.68rem; margin-top: 0.3rem; line-height: 1.2; }
+  .badge { font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
   .badge-planning { background: #FCEFD1; color: #8A6416; }
   .badge-ordered { background: #DCE9DC; color: var(--forest); }
 
   .instructions-recipe { margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--line); }
   .instructions-recipe:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .instructions-recipe h3 { font-family: 'Fraunces', serif; font-size: 1rem; margin: 0 0 0.5rem; }
+  .instructions-recipe h3 { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800; margin: 0 0 0.5rem; }
   .instructions-recipe .ing-list { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.6rem; }
   .instructions-recipe ol { padding-left: 1.1rem; font-size: 0.88rem; line-height: 1.5; }
   .instructions-recipe ol li { margin-bottom: 0.5rem; }
-  .back-link { font-size: 0.85rem; color: var(--forest); font-weight: 600; cursor: pointer; margin-bottom: 0.8rem; display: inline-block; }
+  .back-link { font-size: 0.85rem; color: var(--forest); font-weight: 700; cursor: pointer; margin-bottom: 0.8rem; display: inline-block; }
 
   .overlay {
     display: none; position: fixed; inset: 0; background: var(--paper);
     z-index: 20; overflow-y: auto;
   }
   .overlay.active { display: block; }
-  .overlay-header { background: var(--forest); padding: 1rem 1.25rem; }
-  .overlay-header .back-link { color: #C9D9C5; margin-bottom: 0.5rem; }
-  .overlay-content { padding: 1rem; max-width: 640px; margin: 0 auto; }
-  .overlay-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 12px; margin-bottom: 1rem; }
+  .overlay-header { background: var(--forest); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+  .overlay-header .back-link { color: #C9D9C5; margin-bottom: 0; }
+  .overlay-content { padding: 1rem; max-width: 640px; margin: 0 auto; padding-bottom: 5rem; }
+  .overlay-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 16px; margin-bottom: 1rem; }
   .overlay-img-placeholder {
-    width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin-bottom: 1rem;
+    width: 100%; aspect-ratio: 16/9; border-radius: 16px; margin-bottom: 1rem;
     background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
     display: flex; align-items: center; justify-content: center;
-    color: #C9D9C5; font-family: 'Fraunces', serif; font-size: 2.2rem;
+    color: #C9D9C5; font-size: 2.4rem;
   }
-  .overlay-title { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; margin: 0 0 0.4rem; }
+  .overlay-title { font-family: 'Nunito', sans-serif; font-size: 1.3rem; font-weight: 800; margin: 0 0 0.4rem; }
   .overlay-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
   .nickname-row { margin-bottom: 1rem; }
   .nickname-row label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 0.25rem; }
@@ -231,7 +257,27 @@
   .overlay-ing-list { font-size: 0.9rem; padding-left: 1.1rem; margin-bottom: 1.2rem; }
   .overlay-ing-list li { margin-bottom: 0.3rem; }
   .overlay-ing-list .qty { font-weight: 600; color: var(--forest); font-family: 'JetBrains Mono', monospace; }
-  .add-to-batch-box { border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem; }
+
+  /* Fixed bottom bar for the picker's "Review recipes" button */
+  .sticky-bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--paper);
+    padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08); z-index: 25;
+  }
+  .sticky-bottom-bar .inner { max-width: 640px; margin: 0 auto; }
+
+  .stepper { display: flex; align-items: center; gap: 0.5rem; }
+  .stepper button { width: 32px; height: 32px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.1rem; line-height: 1; }
+  .stepper .val { min-width: 24px; text-align: center; font-weight: 700; }
+
+  .review-item { display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
+  .review-item img, .review-item .thumb-sm-placeholder2 {
+    width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
+    display: flex; align-items: center; justify-content: center; color: #C9D9C5; font-size: 1.2rem;
+  }
+  .review-item .review-info { flex: 1; }
+  .review-item .remove-x { background: none; border: none; color: var(--muted); font-size: 1.3rem; padding: 0.2rem 0.4rem; }
 </style>
 </head>
 <body>
@@ -241,8 +287,8 @@
 </header>
 
 <div class="tabbar">
-  <button id="tabbtn-shopping" class="active" onclick="switchTab('shopping')">Shopping</button>
-  <button id="tabbtn-batches" onclick="switchTab('batches')">Batches</button>
+  <button id="tabbtn-shopping" onclick="switchTab('shopping')">Shopping</button>
+  <button id="tabbtn-batches" class="active" onclick="switchTab('batches')">Batches</button>
   <button id="tabbtn-recipes" onclick="switchTab('recipes')">Recipes</button>
   <button id="tabbtn-settings" onclick="switchTab('settings')">Settings</button>
 </div>
@@ -250,7 +296,7 @@
 <main>
 
   <!-- SHOPPING TAB -->
-  <div id="tab-shopping" class="tab-content active">
+  <div id="tab-shopping" class="tab-content">
     <section id="shoppingChooserSection">
       <h2>Choose a batch to shop</h2>
       <div id="shoppingChooserList" class="empty">Loading…</div>
@@ -268,27 +314,21 @@
     </section>
   </div>
 
-  <!-- BATCHES TAB -->
-  <div id="tab-batches" class="tab-content">
-    <section>
-      <h2>Start a new batch</h2>
-      <div id="recipeListPicker" class="empty">Loading…</div>
-      <label style="font-size:0.85rem; color:var(--muted); display:block; margin-top:0.8rem;">Servings needed</label>
-      <input type="number" id="servingsTarget" value="2" min="1" style="margin-top:0.3rem;">
-      <button class="btn-primary btn-full" onclick="startBatch()">Create batch</button>
-      <div id="batchStatus" class="status"></div>
-    </section>
+  <!-- BATCHES TAB (home page) -->
+  <div id="tab-batches" class="tab-content active">
+    <button class="btn-primary btn-full" onclick="openPicker('new', null)" style="margin-bottom:1rem;">+ New batch</button>
 
-    <section id="batchListSection">
-      <h2>Your batches</h2>
+    <div id="batchListSection">
       <div id="batchList" class="empty">Loading…</div>
-    </section>
+    </div>
 
-    <section id="batchDetailSection" style="display:none;">
+    <div id="batchDetailSection" style="display:none;">
       <span class="back-link" onclick="closeBatchDetail()">&larr; Back to batches</span>
-      <h2 id="batchDetailTitle">Batch</h2>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+        <h2 id="batchDetailTitle" style="margin:0;">Batch</h2>
+      </div>
       <div id="batchDetailContent"></div>
-    </section>
+    </div>
   </div>
 
   <!-- RECIPES TAB -->
@@ -308,6 +348,12 @@
   <!-- SETTINGS TAB -->
   <div id="tab-settings" class="tab-content">
     <section>
+      <h2>Defaults</h2>
+      <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:0.3rem;">Default servings</label>
+      <input type="number" id="defaultServingsInput" min="1" onchange="saveDefaultServings()">
+      <p class="empty" style="margin-top:0.5rem;">Used to pre-fill servings whenever you add a recipe to a batch.</p>
+    </section>
+    <section>
       <h2>Staples — always have these</h2>
       <div id="stapleList" class="staple-pill-list"></div>
       <div class="row">
@@ -319,12 +365,22 @@
 
 </main>
 
-<!-- Recipe detail overlay (nickname + portion scaling + add to batch) -->
+<!-- Recipe detail overlay -->
 <div class="overlay" id="recipeOverlay">
   <div class="overlay-header">
-    <span class="back-link" onclick="closeRecipeDetail()">&larr; Back to recipes</span>
+    <span class="back-link" onclick="closeRecipeDetail()">&larr; Back</span>
   </div>
   <div class="overlay-content" id="recipeOverlayContent"></div>
+</div>
+
+<!-- Picker + Review overlay (used for both "new batch" and "add to existing batch") -->
+<div class="overlay" id="pickerOverlay">
+  <div class="overlay-header">
+    <span class="back-link" onclick="closePickerOverlay()">&larr; Cancel</span>
+    <span style="color:#fff; font-weight:700; font-family:'Nunito',sans-serif;" id="pickerStepLabel">Choose meals</span>
+  </div>
+  <div class="overlay-content" id="pickerOverlayContent"></div>
+  <div class="sticky-bottom-bar" id="pickerBottomBar"></div>
 </div>
 
 <script>
@@ -335,6 +391,13 @@ let batches = [];
 let selectedShoppingBatchId = null;
 let currentRecipeDetail = null;
 let lastShoppingListData = null;
+let defaultServings = 2;
+
+// Picker/review state
+let pickerMode = null;       // 'new' | 'existing'
+let pickerBatchId = null;    // batchId when mode === 'existing'
+let pickerScreen = 'grid';   // 'grid' | 'review'
+let pendingSelections = new Map(); // recipeId -> servings
 
 // ---------- Helpers ----------
 
@@ -357,6 +420,12 @@ function formatBatchDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
+function thumbHtml(recipe, sizeClass) {
+  return recipe.image_url
+    ? `<img class="${sizeClass}" src="${escapeHtml(recipe.image_url)}" alt="">`
+    : `<div class="${sizeClass}-placeholder">🍽️</div>`;
+}
+
 // ---------- Tabs ----------
 
 function switchTab(name) {
@@ -364,6 +433,25 @@ function switchTab(name) {
   document.querySelectorAll('.tabbar button').forEach(el => el.classList.remove('active'));
   document.getElementById(`tab-${name}`).classList.add('active');
   document.getElementById(`tabbtn-${name}`).classList.add('active');
+}
+
+// ---------- Settings ----------
+
+async function loadSettings() {
+  const res = await fetch(`${API}/api/settings`);
+  const settings = await res.json();
+  defaultServings = parseInt(settings.default_servings, 10) || 2;
+  document.getElementById('defaultServingsInput').value = defaultServings;
+}
+
+async function saveDefaultServings() {
+  const val = parseInt(document.getElementById('defaultServingsInput').value, 10) || 2;
+  defaultServings = val;
+  await fetch(`${API}/api/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'default_servings', value: val })
+  });
 }
 
 // ---------- Staples ----------
@@ -411,7 +499,7 @@ async function removeStaple(id) {
   if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
 }
 
-// ---------- Recipes: import, gallery, detail (nickname + scaling + add to batch) ----------
+// ---------- Recipes: import, gallery, detail ----------
 
 async function loadRecipes() {
   const res = await fetch(`${API}/api/recipes`);
@@ -427,9 +515,7 @@ function renderRecipeGrid() {
   }
   el.innerHTML = `<div class="recipe-grid">${recipes.map(r => `
     <div class="recipe-card" onclick="openRecipeDetail('${r.id}')">
-      ${r.image_url
-        ? `<img class="thumb" src="${escapeHtml(r.image_url)}" alt="" onerror="this.outerHTML='<div class=&quot;thumb-placeholder&quot;>🍽️</div>'">`
-        : `<div class="thumb-placeholder">🍽️</div>`}
+      ${thumbHtml(r, 'thumb')}
       <div class="recipe-title">${escapeHtml(displayName(r))}</div>
       <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : ''}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
     </div>
@@ -464,7 +550,6 @@ async function importRecipe() {
     status.className = 'status ok';
     urlInput.value = '';
     await loadRecipes();
-    renderPicker();
   } catch (err) {
     status.textContent = err.message;
     status.className = 'status error';
@@ -475,7 +560,7 @@ async function openRecipeDetail(id) {
   const res = await fetch(`${API}/api/recipe?id=${id}`);
   const recipe = await res.json();
   currentRecipeDetail = recipe;
-  renderRecipeDetail(recipe.servings || 1);
+  renderRecipeDetail(recipe.servings || defaultServings);
   document.getElementById('recipeOverlay').classList.add('active');
 }
 
@@ -506,10 +591,8 @@ function renderRecipeDetail(targetServings) {
     return `<li>${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}</li>`;
   }).join('');
 
-  const planningBatches = batches.filter(b => b.status === 'planning');
-
   document.getElementById('recipeOverlayContent').innerHTML = `
-    ${r.image_url ? `<img class="overlay-img" src="${escapeHtml(r.image_url)}" alt="" onerror="this.outerHTML='<div class=&quot;overlay-img-placeholder&quot;>🍽️</div>'">` : `<div class="overlay-img-placeholder">🍽️</div>`}
+    ${r.image_url ? `<img class="overlay-img" src="${escapeHtml(r.image_url)}" alt="">` : `<div class="overlay-img-placeholder">🍽️</div>`}
     <div class="overlay-title">${escapeHtml(displayName(r))}</div>
     <div class="overlay-meta">${r.cook_time_minutes ? `${r.cook_time_minutes} min · ` : ''}${r.confidence === 'low' ? 'low-confidence import, worth double-checking' : ''}</div>
 
@@ -525,106 +608,196 @@ function renderRecipeDetail(targetServings) {
     </div>
     <ul class="overlay-ing-list">${ingredientsHtml}</ul>
     ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
+  `;
+}
 
-    <div class="add-to-batch-box">
-      <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.4rem;">Add to a batch</label>
-      ${planningBatches.length ? `
-        <select id="addToBatchSelect">
-          ${planningBatches.map(b => `<option value="${b.id}">${formatBatchDate(b.week_start_date)} (serves ${b.servings_target})</option>`).join('')}
-        </select>
-        <button class="btn-primary btn-full" onclick="addToExistingBatch()">Add to selected batch</button>
-      ` : '<p class="empty">No open batches yet — create one from the Batches tab, or add this recipe once you do.</p>'}
+// ---------- Picker + Review overlay (shared by "new batch" and "add to batch") ----------
+
+function openPicker(mode, batchId) {
+  pickerMode = mode;
+  pickerBatchId = batchId;
+  pickerScreen = 'grid';
+  pendingSelections = new Map();
+  document.getElementById('pickerOverlay').classList.add('active');
+  renderPickerScreen();
+}
+
+function closePickerOverlay() {
+  document.getElementById('pickerOverlay').classList.remove('active');
+  pickerMode = null; pickerBatchId = null; pendingSelections = new Map();
+}
+
+function renderPickerScreen() {
+  if (pickerScreen === 'grid') renderPickerGrid();
+  else renderPickerReview();
+}
+
+function renderPickerGrid() {
+  document.getElementById('pickerStepLabel').textContent = 'Choose meals';
+  const content = document.getElementById('pickerOverlayContent');
+
+  if (!recipes.length) {
+    content.innerHTML = '<p class="empty">No recipes yet — import some from the Recipes tab first.</p>';
+    document.getElementById('pickerBottomBar').innerHTML = '';
+    return;
+  }
+
+  content.innerHTML = `<div class="recipe-grid">${recipes.map(r => `
+    <div class="recipe-card">
+      ${thumbHtml(r, 'thumb')}
+      <div class="recipe-title">${escapeHtml(displayName(r))}</div>
+      <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : ''}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
+      <button class="add-btn ${pendingSelections.has(r.id) ? 'added' : ''}" onclick="togglePendingRecipe('${r.id}')">${pendingSelections.has(r.id) ? '✓' : '+'}</button>
+    </div>
+  `).join('')}</div>`;
+
+  document.getElementById('pickerBottomBar').innerHTML = `
+    <div class="inner">
+      <button class="btn-primary btn-full" onclick="goToReview()" ${pendingSelections.size === 0 ? 'disabled style="opacity:0.5;"' : ''}>
+        Review recipes ${pendingSelections.size ? `(${pendingSelections.size})` : ''}
+      </button>
     </div>
   `;
 }
 
-async function addToExistingBatch() {
-  const batchId = document.getElementById('addToBatchSelect').value;
-  await fetch(`${API}/api/weekly-plan?id=${batchId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipeId: currentRecipeDetail.id })
-  });
-  closeRecipeDetail();
-  await loadBatches();
-  renderBatchList();
+function togglePendingRecipe(recipeId) {
+  if (pendingSelections.has(recipeId)) pendingSelections.delete(recipeId);
+  else pendingSelections.set(recipeId, defaultServings);
+  renderPickerGrid();
 }
 
-// ---------- Batches tab ----------
+function goToReview() {
+  pickerScreen = 'review';
+  renderPickerReview();
+}
+
+function renderPickerReview() {
+  document.getElementById('pickerStepLabel').textContent = 'Review';
+  const content = document.getElementById('pickerOverlayContent');
+
+  const items = [...pendingSelections.entries()].map(([id, servings]) => ({
+    recipe: recipes.find(r => r.id === id), servings, id
+  }));
+
+  content.innerHTML = `
+    <span class="back-link" onclick="pickerScreen='grid'; renderPickerScreen();">&larr; Back to meals</span>
+    ${items.map(item => `
+      <div class="review-item">
+        ${item.recipe.image_url ? `<img src="${escapeHtml(item.recipe.image_url)}" alt="">` : `<div class="thumb-sm-placeholder2">🍽️</div>`}
+        <div class="review-info">
+          <div class="recipe-title">${escapeHtml(displayName(item.recipe))}</div>
+        </div>
+        <div class="stepper">
+          <button onclick="adjustReviewServings('${item.id}', -1)">&minus;</button>
+          <span class="val">${item.servings}</span>
+          <button onclick="adjustReviewServings('${item.id}', 1)">+</button>
+        </div>
+        <button class="remove-x" onclick="removePendingFromReview('${item.id}')">&times;</button>
+      </div>
+    `).join('') || '<p class="empty">Nothing selected.</p>'}
+  `;
+
+  document.getElementById('pickerBottomBar').innerHTML = `
+    <div class="inner">
+      <button class="btn-primary btn-full" onclick="commitPickerSelections()" ${items.length === 0 ? 'disabled style="opacity:0.5;"' : ''}>All done</button>
+    </div>
+  `;
+}
+
+function adjustReviewServings(recipeId, delta) {
+  const current = pendingSelections.get(recipeId) || defaultServings;
+  pendingSelections.set(recipeId, Math.max(1, current + delta));
+  renderPickerReview();
+}
+
+function removePendingFromReview(recipeId) {
+  pendingSelections.delete(recipeId);
+  renderPickerReview();
+}
+
+async function commitPickerSelections() {
+  const entries = [...pendingSelections.entries()];
+  if (!entries.length) return;
+
+  if (pickerMode === 'new') {
+    const recipesPayload = entries.map(([recipeId, servings]) => ({ recipeId, servingsOverride: servings }));
+    await fetch(`${API}/api/weekly-plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipes: recipesPayload, servingsTarget: defaultServings })
+    });
+  } else {
+    for (const [recipeId, servings] of entries) {
+      await fetch(`${API}/api/weekly-plan?id=${pickerBatchId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeId, servingsOverride: servings })
+      });
+    }
+  }
+
+  const wasExisting = pickerMode === 'existing';
+  const batchIdToReopen = pickerBatchId;
+  closePickerOverlay();
+  await loadBatches();
+  renderBatchList();
+  if (wasExisting) openBatchDetail(batchIdToReopen);
+}
+
+// ---------- Batches tab (home page) ----------
 
 async function loadBatches() {
   const res = await fetch(`${API}/api/weekly-plans`);
   batches = await res.json();
-  batches.sort((a, b) => new Date(b.week_start_date) - new Date(a.week_start_date));
-}
-
-function renderPicker() {
-  const el = document.getElementById('recipeListPicker');
-  if (!recipes.length) {
-    el.innerHTML = '<div class="empty">No recipes yet — import one on the Recipes tab.</div>';
-    return;
-  }
-  el.innerHTML = recipes.map(r => `
-    <div class="recipe-item">
-      <input type="checkbox" value="${r.id}" id="pick-${r.id}">
-      <label for="pick-${r.id}" style="flex:1;">
-        <div class="recipe-title">${escapeHtml(displayName(r))}</div>
-        <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : 'servings unknown'}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
-      </label>
-    </div>
-  `).join('');
-}
-
-async function startBatch() {
-  const checked = [...document.querySelectorAll('#recipeListPicker input[type=checkbox]:checked')].map(c => c.value);
-  const servingsTarget = parseInt(document.getElementById('servingsTarget').value, 10) || 2;
-  const status = document.getElementById('batchStatus');
-
-  if (!checked.length) {
-    status.textContent = 'Tick at least one recipe first.';
-    status.className = 'status error';
-    return;
-  }
-
-  status.textContent = 'Creating batch…';
-  status.className = 'status';
-
-  try {
-    const res = await fetch(`${API}/api/weekly-plans`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipeIds: checked, servingsTarget })
-    });
-    const plan = await res.json();
-    if (!res.ok) throw new Error(plan.error || 'Failed to create batch');
-
-    status.textContent = 'Batch created!';
-    status.className = 'status ok';
-    document.querySelectorAll('#recipeListPicker input[type=checkbox]').forEach(c => c.checked = false);
-    await loadBatches();
-    renderBatchList();
-    renderShoppingChooser();
-  } catch (err) {
-    status.textContent = err.message;
-    status.className = 'status error';
-  }
+  // Oldest first (top), newest last (bottom)
+  batches.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 }
 
 function renderBatchList() {
   const el = document.getElementById('batchList');
   if (!batches.length) {
-    el.innerHTML = '<div class="empty">No batches yet — create one above.</div>';
+    el.innerHTML = '<p class="empty">No batches yet — tap "+ New batch" above to get started.</p>';
     return;
   }
-  el.innerHTML = batches.map(b => `
-    <div class="batch-card" onclick="openBatchDetail('${b.id}')">
-      <div class="batch-date">
-        ${formatBatchDate(b.week_start_date)}
+
+  el.innerHTML = batches.map(b => {
+    const batchRecipes = recipes.filter(r => b._recipeIds && b._recipeIds.includes(r.id));
+    return `
+    <div class="batch-card">
+      <div class="batch-date-row">
+        <div>
+          <div class="batch-date">${formatBatchDate(b.week_start_date)}</div>
+          <div class="batch-meta">serves ${b.servings_target}</div>
+        </div>
         <span class="badge badge-${b.status}">${b.status}</span>
       </div>
-      <div class="batch-meta">serves ${b.servings_target}</div>
+      <div id="batch-strip-${b.id}"><span class="empty">Loading meals…</span></div>
+      <button class="btn-secondary btn-full btn-sm" onclick="openBatchDetail('${b.id}')">View batch</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
+
+  // Fetch each batch's recipes for the photo strip (lightweight, only IDs+images needed)
+  batches.forEach(b => loadBatchStrip(b.id));
+}
+
+async function loadBatchStrip(batchId) {
+  const res = await fetch(`${API}/api/weekly-plan?id=${batchId}`);
+  const batch = await res.json();
+  const el = document.getElementById(`batch-strip-${batchId}`);
+  if (!el) return;
+
+  if (!batch.recipes.length) {
+    el.innerHTML = '<p class="empty">No meals chosen this week</p>';
+    return;
+  }
+
+  el.innerHTML = `<div class="photo-strip">${batch.recipes.map(r => `
+    <div class="strip-item" onclick="openBatchDetail('${batchId}')">
+      ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="">` : `<div class="strip-placeholder">🍽️</div>`}
+      <div class="strip-name">${escapeHtml(displayName(r))}</div>
+    </div>
+  `).join('')}</div>`;
 }
 
 async function openBatchDetail(batchId) {
@@ -635,37 +808,43 @@ async function openBatchDetail(batchId) {
   document.getElementById('batchDetailSection').style.display = 'block';
   document.getElementById('batchDetailTitle').innerHTML = `${formatBatchDate(batch.week_start_date)} <span class="badge badge-${batch.status}">${batch.status}</span>`;
 
-  if (batch.status === 'planning') {
-    const otherRecipes = recipes.filter(r => !batch.recipes.some(br => br.id === r.id));
-    document.getElementById('batchDetailContent').innerHTML = `
-      <div style="margin-bottom:1rem;">
-        ${batch.recipes.map(r => `<div class="recipe-item"><span class="recipe-title">${escapeHtml(displayName(r))}</span></div>`).join('')}
-      </div>
-      ${otherRecipes.length ? `
-        <div class="row" style="margin-bottom:0.8rem;">
-          <select id="addRecipeSelect">
-            ${otherRecipes.map(r => `<option value="${r.id}">${escapeHtml(displayName(r))}</option>`).join('')}
-          </select>
-          <button class="btn-secondary" onclick="addRecipeToBatch('${batch.id}')">Add</button>
+  const recipeRows = batch.recipes.map(r => `
+    <div class="recipe-item">
+      <div onclick="openRecipeDetailFromBatch('${r.id}')" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
+        ${thumbHtml(r, 'thumb-sm')}
+        <div>
+          <div class="recipe-title">${escapeHtml(displayName(r))}</div>
+          <div class="recipe-meta">${r.servingsOverride ? `serves ${r.servingsOverride}` : ''}</div>
         </div>
-      ` : '<p class="empty">All your recipes are already in this batch.</p>'}
-      <button class="btn-primary btn-full" onclick="switchTab('shopping'); selectShoppingBatch('${batch.id}')">Shop this batch</button>
-    `;
-  } else {
-    document.getElementById('batchDetailContent').innerHTML = batch.recipes.map(r => `
-      <div class="instructions-recipe">
-        <h3>${escapeHtml(displayName(r))}</h3>
-        <div class="ing-list">${r.ingredients.map(i => escapeHtml(cap(i.item))).join(', ')}</div>
-        ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
       </div>
-    `).join('');
-  }
+      <button class="btn-danger btn-sm" onclick="deleteRecipeFromBatch('${batch.id}', '${r.id}', '${batch.status}')">Remove</button>
+    </div>
+  `).join('') || '<p class="empty">No meals in this batch yet.</p>';
+
+  document.getElementById('batchDetailContent').innerHTML = `
+    ${recipeRows}
+    <button class="btn-secondary btn-full" style="margin-top:0.8rem;" onclick="openPicker('existing', '${batch.id}')">+ Add a meal</button>
+    ${batch.status === 'planning' ? `
+      <button class="btn-primary btn-full" onclick="switchTab('shopping'); selectShoppingBatch('${batch.id}')">Shop this batch</button>
+    ` : `
+      <button class="btn-secondary btn-full" onclick="switchTab('shopping'); selectShoppingBatch('${batch.id}')">View shopping list</button>
+    `}
+  `;
 }
 
-async function addRecipeToBatch(batchId) {
-  const recipeId = document.getElementById('addRecipeSelect').value;
+function openRecipeDetailFromBatch(recipeId) {
+  openRecipeDetail(recipeId);
+}
+
+async function deleteRecipeFromBatch(batchId, recipeId, batchStatus) {
+  const message = batchStatus === 'ordered'
+    ? 'This batch has already been ordered — you may have already bought ingredients for this recipe. Remove it anyway?'
+    : 'Remove this recipe from the batch?';
+
+  if (!confirm(message)) return;
+
   await fetch(`${API}/api/weekly-plan?id=${batchId}`, {
-    method: 'POST',
+    method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipeId })
   });
@@ -690,7 +869,7 @@ function renderShoppingChooser() {
   }
 
   el.innerHTML = planning.map(b => `
-    <div class="batch-card" onclick="selectShoppingBatch('${b.id}')">
+    <div class="batch-card" onclick="selectShoppingBatch('${b.id}')" style="cursor:pointer;">
       <div class="batch-date">${formatBatchDate(b.week_start_date)}</div>
       <div class="batch-meta">serves ${b.servings_target}</div>
     </div>
@@ -853,11 +1032,11 @@ async function markOrdered() {
 // ---------- Init ----------
 
 async function init() {
+  await loadSettings();
   await loadStaples();
   await loadRecipes();
   await loadBatches();
 
-  renderPicker();
   renderBatchList();
   renderShoppingChooser();
 }
