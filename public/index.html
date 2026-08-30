@@ -29,21 +29,33 @@
   header {
     background: var(--forest);
     color: var(--paper);
-    padding: 1.5rem 1.25rem 1.75rem;
+    padding: 1.25rem 1.25rem 1rem;
   }
   header h1 {
     font-family: 'Fraunces', serif;
     font-weight: 600;
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     margin: 0;
     letter-spacing: -0.01em;
   }
-  header p {
-    margin: 0.35rem 0 0;
-    font-size: 0.85rem;
-    color: #C9D9C5;
+
+  /* Tab bar */
+  .tabbar {
+    display: flex;
+    background: var(--forest-dark);
+    position: sticky; top: 0; z-index: 10;
   }
+  .tabbar button {
+    flex: 1; background: none; border: none; border-radius: 0;
+    color: #C9D9C5; font-size: 0.8rem; font-weight: 600; padding: 0.75rem 0.4rem;
+    font-family: 'Inter', sans-serif; cursor: pointer;
+  }
+  .tabbar button.active { color: #fff; border-bottom: 3px solid var(--mustard); }
+
   main { max-width: 640px; margin: 0 auto; padding: 1rem; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
   section {
     background: var(--card);
     border-radius: 14px;
@@ -95,9 +107,23 @@
   .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
   .empty { color: var(--muted); font-size: 0.88rem; font-style: italic; }
 
-  /* Staples management — pill list with an add box, always editable
-     directly rather than only reachable by tapping "Always have" on a
-     generated list item */
+  /* Recipes tab: image gallery grid */
+  .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  .recipe-card { cursor: pointer; }
+  .recipe-card .thumb {
+    width: 100%; aspect-ratio: 4/3; border-radius: 10px; object-fit: cover;
+    background: var(--paper); display: block;
+  }
+  .recipe-card .thumb-placeholder {
+    width: 100%; aspect-ratio: 4/3; border-radius: 10px;
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #C9D9C5; font-family: 'Fraunces', serif; font-size: 1.8rem;
+  }
+  .recipe-card .recipe-title { margin-top: 0.4rem; font-size: 0.85rem; }
+  .recipe-card .recipe-meta { font-size: 0.72rem; }
+
+  /* Staples management */
   .staple-pill-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
   .staple-pill {
     display: flex; align-items: center; gap: 0.35rem;
@@ -111,8 +137,7 @@
   }
   .staple-pill button:active { background: var(--line); }
 
-  /* Shopping list rendered like a till receipt, grouped into collapsible
-     category sections */
+  /* Shopping list — till receipt with collapsible categories */
   .receipt {
     background: #fff;
     font-family: 'JetBrains Mono', monospace;
@@ -179,69 +204,141 @@
   .instructions-recipe ol { padding-left: 1.1rem; font-size: 0.88rem; line-height: 1.5; }
   .instructions-recipe ol li { margin-bottom: 0.5rem; }
   .back-link { font-size: 0.85rem; color: var(--forest); font-weight: 600; cursor: pointer; margin-bottom: 0.8rem; display: inline-block; }
+
+  /* Recipe detail overlay — portion scaling lives here */
+  .overlay {
+    display: none; position: fixed; inset: 0; background: var(--paper);
+    z-index: 20; overflow-y: auto;
+  }
+  .overlay.active { display: block; }
+  .overlay-header { background: var(--forest); padding: 1rem 1.25rem; }
+  .overlay-header .back-link { color: #C9D9C5; margin-bottom: 0.5rem; }
+  .overlay-content { padding: 1rem; max-width: 640px; margin: 0 auto; }
+  .overlay-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 12px; margin-bottom: 1rem; }
+  .overlay-img-placeholder {
+    width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #C9D9C5; font-family: 'Fraunces', serif; font-size: 2.2rem;
+  }
+  .overlay-title { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; margin: 0 0 0.4rem; }
+  .overlay-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+  .scale-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+  .scale-row label { font-size: 0.85rem; color: var(--muted); }
+  .scale-row input { width: 70px; }
+  .overlay-ing-list { font-size: 0.9rem; padding-left: 1.1rem; margin-bottom: 1.2rem; }
+  .overlay-ing-list li { margin-bottom: 0.3rem; }
+  .overlay-ing-list .qty { font-weight: 600; color: var(--forest); font-family: 'JetBrains Mono', monospace; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>meal-planner</h1>
-  <p>Import recipes, plan your week, get a shopping list.</p>
 </header>
+
+<div class="tabbar">
+  <button id="tabbtn-shopping" class="active" onclick="switchTab('shopping')">Shopping</button>
+  <button id="tabbtn-week" onclick="switchTab('week')">This week</button>
+  <button id="tabbtn-recipes" onclick="switchTab('recipes')">Recipes</button>
+  <button id="tabbtn-settings" onclick="switchTab('settings')">Settings</button>
+</div>
 
 <main>
 
-  <section>
-    <h2>Import a recipe</h2>
-    <input type="url" id="recipeUrl" placeholder="Paste a recipe URL">
-    <button class="btn-primary btn-full" onclick="importRecipe()">Import</button>
-    <div id="importStatus" class="status"></div>
-  </section>
+  <!-- SHOPPING TAB -->
+  <div id="tab-shopping" class="tab-content active">
+    <section id="noPlanNotice">
+      <p class="empty">No shopping list yet — go to <strong>This week</strong> to pick your meals and start one.</p>
+    </section>
+    <section id="activePlanSection" style="display:none;">
+      <h2>This week's shopping list</h2>
+      <div id="receiptWrap"></div>
+      <button class="btn-primary btn-full" onclick="markOrdered()">Mark as ordered</button>
+      <div id="orderStatus" class="status"></div>
+    </section>
+  </div>
 
-  <section>
-    <h2>Staples — always have these</h2>
-    <div id="stapleList" class="staple-pill-list"></div>
-    <div class="row">
-      <input type="text" id="newStaple" placeholder="e.g. salt, sugar, olive oil">
-      <button class="btn-primary" onclick="addStaple()">Add</button>
-    </div>
-  </section>
+  <!-- THIS WEEK TAB -->
+  <div id="tab-week" class="tab-content">
+    <section id="pickerSection" style="display:none;">
+      <h2>Plan this week</h2>
+      <div id="recipeListPicker" class="empty">Loading…</div>
+      <label style="font-size:0.85rem; color:var(--muted); display:block; margin-top:0.8rem;">Servings needed</label>
+      <input type="number" id="servingsTarget" value="2" min="1" style="margin-top:0.3rem;">
+      <button class="btn-primary btn-full" onclick="startPlan()">Start this week's plan</button>
+      <div id="planStatus" class="status"></div>
+    </section>
 
-  <!-- Picker: shown only when there's no in-progress plan -->
-  <section id="pickerSection" style="display:none;">
-    <h2>Plan this week</h2>
-    <div id="recipeList" class="empty">Loading…</div>
-    <label style="font-size:0.85rem; color:var(--muted); display:block; margin-top:0.8rem;">Servings needed</label>
-    <input type="number" id="servingsTarget" value="2" min="1" style="margin-top:0.3rem;">
-    <button class="btn-primary btn-full" onclick="startPlan()">Start this week's plan</button>
-    <div id="planStatus" class="status"></div>
-  </section>
+    <section id="planSummarySection" style="display:none;">
+      <h2>This week is planned</h2>
+      <div id="planSummaryContent"></div>
+      <p class="empty" style="margin-top:0.6rem;">See the <strong>Shopping</strong> tab for the list.</p>
+    </section>
 
-  <!-- Active plan: the shopping list with Got it / Always have actions -->
-  <section id="activePlanSection" style="display:none;">
-    <h2>This week's shopping list</h2>
-    <div id="receiptWrap"></div>
-    <button class="btn-primary btn-full" onclick="markOrdered()">Mark as ordered</button>
-    <div id="orderStatus" class="status"></div>
-  </section>
+    <section id="pastWeeksSection" style="display:none;">
+      <h2>Past weeks</h2>
+      <div id="pastWeeksList"></div>
+    </section>
 
-  <section id="pastWeeksSection" style="display:none;">
-    <h2>Past weeks</h2>
-    <div id="pastWeeksList"></div>
-  </section>
+    <section id="planDetailSection" style="display:none;">
+      <span class="back-link" onclick="showPastWeeks()">&larr; Back to past weeks</span>
+      <h2 id="planDetailTitle">Meals this week</h2>
+      <div id="planDetailContent"></div>
+    </section>
+  </div>
 
-  <section id="planDetailSection" style="display:none;">
-    <span class="back-link" onclick="showPastWeeks()">&larr; Back to past weeks</span>
-    <h2 id="planDetailTitle">Meals this week</h2>
-    <div id="planDetailContent"></div>
-  </section>
+  <!-- RECIPES TAB -->
+  <div id="tab-recipes" class="tab-content">
+    <section>
+      <h2>Import a recipe</h2>
+      <input type="url" id="recipeUrl" placeholder="Paste a recipe URL">
+      <button class="btn-primary btn-full" onclick="importRecipe()">Import</button>
+      <div id="importStatus" class="status"></div>
+    </section>
+    <section>
+      <h2>Your recipes</h2>
+      <div id="recipeGrid" class="empty">Loading…</div>
+    </section>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-settings" class="tab-content">
+    <section>
+      <h2>Staples — always have these</h2>
+      <div id="stapleList" class="staple-pill-list"></div>
+      <div class="row">
+        <input type="text" id="newStaple" placeholder="e.g. salt, sugar, olive oil">
+        <button class="btn-primary" onclick="addStaple()">Add</button>
+      </div>
+    </section>
+  </div>
 
 </main>
 
+<!-- Recipe detail overlay (portion scaling) -->
+<div class="overlay" id="recipeOverlay">
+  <div class="overlay-header">
+    <span class="back-link" onclick="closeRecipeDetail()">&larr; Back to recipes</span>
+  </div>
+  <div class="overlay-content" id="recipeOverlayContent"></div>
+</div>
+
 <script>
-const API = ''; // same-origin
+const API = '';
 
 let recipes = [];
 let currentPlan = null;
+let currentRecipeDetail = null;
+
+// ---------- Tabs ----------
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tabbar button').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  document.getElementById(`tabbtn-${name}`).classList.add('active');
+}
 
 // ---------- Staples management ----------
 
@@ -275,7 +372,7 @@ async function addStaple() {
   });
   input.value = '';
   loadStaples();
-  if (currentPlan) loadActivePlanList(); // re-filter the active list if a staple was just added
+  if (currentPlan) loadActivePlanList();
 }
 
 async function removeStaple(id) {
@@ -288,11 +385,29 @@ async function removeStaple(id) {
   if (currentPlan) loadActivePlanList();
 }
 
-// ---------- Recipes & picker ----------
+// ---------- Recipes: import, gallery, detail with portion scaling ----------
 
 async function loadRecipes() {
   const res = await fetch(`${API}/api/recipes`);
   recipes = await res.json();
+  renderRecipeGrid();
+}
+
+function renderRecipeGrid() {
+  const el = document.getElementById('recipeGrid');
+  if (!recipes.length) {
+    el.innerHTML = '<div class="empty">No recipes yet — import one above.</div>';
+    return;
+  }
+  el.innerHTML = `<div class="recipe-grid">${recipes.map(r => `
+    <div class="recipe-card" onclick="openRecipeDetail('${r.id}')">
+      ${r.image_url
+        ? `<img class="thumb" src="${escapeHtml(r.image_url)}" alt="" onerror="this.outerHTML='<div class=&quot;thumb-placeholder&quot;>🍽️</div>'">`
+        : `<div class="thumb-placeholder">🍽️</div>`}
+      <div class="recipe-title">${escapeHtml(r.title)}</div>
+      <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : ''}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
+    </div>
+  `).join('')}</div>`;
 }
 
 async function importRecipe() {
@@ -323,24 +438,62 @@ async function importRecipe() {
     status.className = 'status ok';
     urlInput.value = '';
     await loadRecipes();
-    if (!currentPlan) renderPicker();
+    renderPicker();
   } catch (err) {
     status.textContent = err.message;
     status.className = 'status error';
   }
 }
 
+async function openRecipeDetail(id) {
+  const res = await fetch(`${API}/api/recipe?id=${id}`);
+  const recipe = await res.json();
+  currentRecipeDetail = recipe;
+  renderRecipeDetail(recipe.servings || 1);
+  document.getElementById('recipeOverlay').classList.add('active');
+}
+
+function closeRecipeDetail() {
+  document.getElementById('recipeOverlay').classList.remove('active');
+  currentRecipeDetail = null;
+}
+
+function renderRecipeDetail(targetServings) {
+  const r = currentRecipeDetail;
+  const original = r.servings;
+  const scale = original ? targetServings / original : 1;
+
+  const ingredientsHtml = r.ingredients.map(ing => {
+    const scaledQty = ing.quantity !== null ? Math.round(ing.quantity * scale * 100) / 100 : null;
+    return `<li>${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(ing.item)}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}</li>`;
+  }).join('');
+
+  document.getElementById('recipeOverlayContent').innerHTML = `
+    ${r.image_url ? `<img class="overlay-img" src="${escapeHtml(r.image_url)}" alt="" onerror="this.outerHTML='<div class=&quot;overlay-img-placeholder&quot;>🍽️</div>'">` : `<div class="overlay-img-placeholder">🍽️</div>`}
+    <div class="overlay-title">${escapeHtml(r.title)}</div>
+    <div class="overlay-meta">${r.cook_time_minutes ? `${r.cook_time_minutes} min · ` : ''}${r.confidence === 'low' ? 'low-confidence import, worth double-checking' : ''}</div>
+    <div class="scale-row">
+      <label>Servings</label>
+      <input type="number" id="scaleServings" value="${targetServings}" min="1" onchange="renderRecipeDetail(parseInt(this.value,10) || 1)">
+      ${!original ? '<span class="empty" style="font-size:0.75rem;">(original servings unknown — showing as-scraped)</span>' : ''}
+    </div>
+    <ul class="overlay-ing-list">${ingredientsHtml}</ul>
+    ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
+  `;
+}
+
+// ---------- This week: picker ----------
+
 function renderPicker() {
-  document.getElementById('pickerSection').style.display = 'block';
-  const el = document.getElementById('recipeList');
+  const el = document.getElementById('recipeListPicker');
   if (!recipes.length) {
-    el.innerHTML = '<div class="empty">No recipes yet — import one above.</div>';
+    el.innerHTML = '<div class="empty">No recipes yet — import one on the Recipes tab.</div>';
     return;
   }
   el.innerHTML = recipes.map(r => `
     <div class="recipe-item">
-      <input type="checkbox" value="${r.id}" id="r-${r.id}">
-      <label for="r-${r.id}" style="flex:1;">
+      <input type="checkbox" value="${r.id}" id="pick-${r.id}">
+      <label for="pick-${r.id}" style="flex:1;">
         <div class="recipe-title">${escapeHtml(r.title)}</div>
         <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : 'servings unknown'}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
       </label>
@@ -349,7 +502,7 @@ function renderPicker() {
 }
 
 async function startPlan() {
-  const checked = [...document.querySelectorAll('#recipeList input[type=checkbox]:checked')].map(c => c.value);
+  const checked = [...document.querySelectorAll('#recipeListPicker input[type=checkbox]:checked')].map(c => c.value);
   const servingsTarget = parseInt(document.getElementById('servingsTarget').value, 10) || 2;
   const status = document.getElementById('planStatus');
 
@@ -372,7 +525,7 @@ async function startPlan() {
     if (!res.ok) throw new Error(plan.error || 'Failed to start plan');
 
     currentPlan = plan;
-    document.getElementById('pickerSection').style.display = 'none';
+    await showActiveWeekState();
     await loadActivePlanList();
   } catch (err) {
     status.textContent = err.message;
@@ -380,20 +533,32 @@ async function startPlan() {
   }
 }
 
-// ---------- Active plan shopping list ----------
+async function showActiveWeekState() {
+  document.getElementById('pickerSection').style.display = 'none';
+  document.getElementById('planSummarySection').style.display = 'block';
+
+  const res = await fetch(`${API}/api/weekly-plan?id=${currentPlan.id}`);
+  const plan = await res.json();
+  document.getElementById('planSummaryContent').innerHTML = `
+    <div class="recipe-meta" style="margin-bottom:0.5rem;">serves ${plan.servings_target}</div>
+    ${plan.recipes.map(r => `<div class="recipe-item"><span class="recipe-title">${escapeHtml(r.title)}</span></div>`).join('')}
+  `;
+}
+
+// ---------- Shopping tab (active plan's list) ----------
 
 async function loadActivePlanList() {
+  document.getElementById('noPlanNotice').style.display = 'none';
+  document.getElementById('activePlanSection').style.display = 'block';
+
   const res = await fetch(`${API}/api/weekly-plan-shopping-list?id=${currentPlan.id}`);
   const data = await res.json();
-  document.getElementById('activePlanSection').style.display = 'block';
   renderReceipt(data);
 }
 
 function renderReceipt(data) {
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 
-  // Group by category, in a fixed sensible shopping order rather than
-  // alphabetical (fresh stuff first, cupboard stuff last)
   const categoryOrder = ['Fruit & Veg', 'Meat & Fish', 'Dairy & Eggs', 'Bakery', 'Frozen', 'Store Cupboard', 'Herbs & Spices', 'Other'];
   const grouped = {};
   data.shoppingList.forEach(item => {
@@ -446,13 +611,13 @@ function renderReceipt(data) {
   `;
 }
 
-async function markGotIt(itemName, btn) {
+async function markGotIt(itemName) {
   await fetch(`${API}/api/weekly-plan-exclude`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ planId: currentPlan.id, itemName })
   });
-  loadActivePlanList(); // full re-render so it moves into "Already sorted"
+  loadActivePlanList();
 }
 
 async function undoGotIt(itemName) {
@@ -464,7 +629,7 @@ async function undoGotIt(itemName) {
   loadActivePlanList();
 }
 
-async function markStaple(itemName, btn) {
+async function markStaple(itemName) {
   await fetch(`${API}/api/staples`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -489,6 +654,9 @@ async function markOrdered() {
 
     currentPlan = null;
     document.getElementById('activePlanSection').style.display = 'none';
+    document.getElementById('noPlanNotice').style.display = 'block';
+    document.getElementById('planSummarySection').style.display = 'none';
+    document.getElementById('pickerSection').style.display = 'block';
     status.textContent = '';
     renderPicker();
     loadPastWeeks();
@@ -546,17 +714,22 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ---------- Init ----------
+
 async function init() {
   await loadStaples();
   await loadRecipes();
+
   const res = await fetch(`${API}/api/weekly-plans`);
   const plans = await res.json();
   const inProgress = plans.find(p => p.status === 'planning');
 
   if (inProgress) {
     currentPlan = inProgress;
+    await showActiveWeekState();
     await loadActivePlanList();
   } else {
+    document.getElementById('pickerSection').style.display = 'block';
     renderPicker();
   }
   loadPastWeeks();
