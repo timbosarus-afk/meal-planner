@@ -4,8 +4,16 @@
 //   - permanent staples (the `staples` table — salt, pepper, etc, never shop for these)
 //   - this plan's own "already have" taps (`weekly_plan_exclusions` — resets
 //     every week since it's tied to a specific weekly_plan_id)
-// That's the two-tier exclusion Tim asked for: "always have" (permanent) vs
-// "already have this week" (one-off, doesn't carry over).
+// That's the two-tier exclusion: "always have" (permanent) vs "already have
+// this week" (one-off, doesn't carry over).
+//
+// Each item also gets a rough category (Fruit & Veg, Meat & Fish, etc.) via
+// keyword matching, so the list can be grouped/collapsed by section rather
+// than shown as one flat alphabetical block. This is a heuristic, same
+// spirit as the ingredient-line parser — imperfect at the edges (e.g. plain
+// "pepper" defaults to veg since bell peppers are far more common in recipe
+// ingredient lists than the ground spice), refine based on real mismatches
+// rather than trying to enumerate every case up front.
 
 const { supabase } = require('../lib/db');
 
@@ -14,6 +22,24 @@ function setCors(res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
+}
+
+const CATEGORY_KEYWORDS = [
+  ['Herbs & Spices', ['salt', 'black pepper', 'ground pepper', 'peppercorn', 'cumin', 'paprika', 'cinnamon', 'oregano', 'thyme', 'rosemary', 'bay leaf', 'chilli flake', 'chili flake', 'nutmeg', 'cardamom', 'turmeric', 'coriander seed', 'cayenne', 'garam masala', 'mixed spice', 'vanilla extract', 'basil', 'parsley', 'mint', 'dill', 'sage', 'tarragon']],
+  ['Meat & Fish', ['chicken', 'beef', 'pork', 'lamb', 'mince', 'bacon', 'sausage', 'turkey', 'fish', 'salmon', 'prawn', 'shrimp', 'cod', 'tuna', 'ham', 'chorizo', 'anchovy', 'steak']],
+  ['Dairy & Eggs', ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'yoghurt', 'egg', 'mozzarella', 'parmesan', 'feta', 'mascarpone', 'ricotta', 'buttermilk']],
+  ['Bakery', ['bread', 'bun', 'baguette', 'tortilla', 'pitta', 'pita', 'naan', 'bagel', 'croissant', 'brioche']],
+  ['Store Cupboard', ['rice', 'pasta', 'flour', 'sugar', 'olive oil', 'vegetable oil', 'sunflower oil', 'vinegar', 'tin ', 'tinned', 'canned', 'stock cube', 'stock pot', 'passata', 'ketchup', 'mustard', 'honey', 'jam', 'cereal', 'oats', 'lentil', 'chickpea', 'noodle', 'soy sauce', 'fish sauce', 'worcestershire', 'breadcrumb', 'cornflour', 'baking powder', 'baking soda', 'yeast']],
+  ['Frozen', ['frozen', 'ice cream', 'peas (frozen']],
+  ['Fruit & Veg', ['onion', 'garlic', 'tomato', 'potato', 'carrot', 'pepper', 'lettuce', 'spinach', 'cucumber', 'courgette', 'aubergine', 'eggplant', 'mushroom', 'apple', 'banana', 'lemon', 'lime', 'avocado', 'broccoli', 'cauliflower', 'celery', 'ginger', 'chilli', 'chili', 'kale', 'leek', 'sweetcorn', 'corn', 'squash', 'pumpkin', 'beetroot', 'radish', 'spring onion', 'shallot', 'orange', 'berry', 'berries', 'grape', 'pear', 'peach', 'mango', 'pineapple', 'melon']]
+];
+
+function categorise(itemName) {
+  const lower = itemName.toLowerCase();
+  for (const [category, keywords] of CATEGORY_KEYWORDS) {
+    if (keywords.some(k => lower.includes(k))) return category;
+  }
+  return 'Other';
 }
 
 module.exports = async (req, res) => {
@@ -86,9 +112,10 @@ module.exports = async (req, res) => {
         item: entry.item,
         unit: entry.unit,
         quantity: entry.hasQuantity ? Math.round(entry.quantity * 100) / 100 : null,
-        usedIn: [...entry.sourceRecipes]
+        usedIn: [...entry.sourceRecipes],
+        category: categorise(entry.item)
       }))
-      .sort((a, b) => a.item.localeCompare(b.item));
+      .sort((a, b) => a.category.localeCompare(b.category) || a.item.localeCompare(b.item));
 
     res.status(200).json({
       planId,
