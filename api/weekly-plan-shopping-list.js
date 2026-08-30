@@ -1,11 +1,11 @@
-// Vercel serverless function — consolidated shopping list for ONE weekly
-// plan (as opposed to the older /api/shopping-list, which takes ad-hoc
-// recipeIds and has no memory of a plan). This version excludes BOTH:
+// Vercel serverless function — consolidated shopping list for ONE batch
+// (as opposed to the older /api/shopping-list, which takes ad-hoc
+// recipeIds and has no memory of a batch). This version excludes BOTH:
 //   - permanent staples (the `staples` table — salt, pepper, etc, never shop for these)
-//   - this plan's own "already have" taps (`weekly_plan_exclusions` — resets
-//     every week since it's tied to a specific weekly_plan_id)
+//   - this batch's own "already have" taps (`weekly_plan_exclusions` — resets
+//     every batch since it's tied to a specific weekly_plan_id)
 // That's the two-tier exclusion: "always have" (permanent) vs "already have
-// this week" (one-off, doesn't carry over).
+// this batch" (one-off, doesn't carry over).
 //
 // Each item also gets a rough category (Fruit & Veg, Meat & Fish, etc.) via
 // keyword matching, so the list can be grouped/collapsed by section rather
@@ -14,6 +14,10 @@
 // "pepper" defaults to veg since bell peppers are far more common in recipe
 // ingredient lists than the ground spice), refine based on real mismatches
 // rather than trying to enumerate every case up front.
+//
+// "usedIn" now prefers each recipe's nickname over its (often long, scraped)
+// title, so a shopping list line doesn't end up captioned with an entire
+// blog-post title.
 
 const { supabase } = require('../lib/db');
 
@@ -57,7 +61,7 @@ module.exports = async (req, res) => {
 
     const { data: planRecipes, error: prError } = await supabase
       .from('weekly_plan_recipes')
-      .select('recipe_id, servings_override, recipes(id, title, servings)')
+      .select('recipe_id, servings_override, recipes(id, title, nickname, servings)')
       .eq('weekly_plan_id', planId);
     if (prError) throw new Error(prError.message);
 
@@ -81,6 +85,7 @@ module.exports = async (req, res) => {
     };
 
     const recipeById = Object.fromEntries(planRecipes.map(pr => [pr.recipe_id, { ...pr.recipes, servingsOverride: pr.servings_override }]));
+    const displayName = (recipe) => (recipe?.nickname && recipe.nickname.trim()) ? recipe.nickname : (recipe?.title || 'Unknown recipe');
 
     const consolidated = {};
     const excludedAsStaples = new Set();
@@ -104,7 +109,7 @@ module.exports = async (req, res) => {
         consolidated[key].quantity += scaledQuantity;
         consolidated[key].hasQuantity = true;
       }
-      consolidated[key].sourceRecipes.add(recipe?.title || 'Unknown recipe');
+      consolidated[key].sourceRecipes.add(displayName(recipe));
     }
 
     const shoppingList = Object.values(consolidated)
