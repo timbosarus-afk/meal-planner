@@ -1,6 +1,7 @@
 // Vercel serverless function — GET list of all saved recipes.
-// Returns lightweight summaries (no ingredients/steps) for picking from — use
-// GET /api/recipes/:id (not built yet, add if needed) for full detail.
+// Returns lightweight summaries (now including image_url for the Recipes
+// tab gallery) — use GET /api/recipe?id=... for full detail with
+// ingredients/steps.
 
 const { supabase } = require('../lib/db');
 
@@ -22,7 +23,7 @@ module.exports = async (req, res) => {
 
   const { data, error } = await supabase
     .from('recipes')
-    .select('id, title, source_url, servings, prep_time_minutes, cook_time_minutes, created_at')
+    .select('id, title, source_url, servings, prep_time_minutes, cook_time_minutes, image_url, created_at')
     .order('created_at', { ascending: false });
 
   if (error) {
