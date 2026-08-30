@@ -39,7 +39,6 @@
     letter-spacing: -0.01em;
   }
 
-  /* Tab bar */
   .tabbar {
     display: flex;
     background: var(--forest-dark);
@@ -69,7 +68,7 @@
     font-weight: 600;
     margin: 0 0 0.75rem;
   }
-  input[type=text], input[type=number], input[type=url] {
+  select, input[type=text], input[type=number], input[type=url] {
     width: 100%;
     padding: 0.7rem 0.85rem;
     border: 1.5px solid var(--line);
@@ -79,7 +78,7 @@
     background: var(--paper);
     color: var(--ink);
   }
-  input:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
+  input:focus, select:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
   button {
     font-family: 'Inter', sans-serif;
     font-weight: 600;
@@ -92,6 +91,7 @@
   .btn-primary { background: var(--forest); color: #fff; }
   .btn-primary:active { background: var(--forest-dark); }
   .btn-secondary { background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); }
+  .btn-ai { background: var(--mustard); color: var(--ink); }
   .btn-full { width: 100%; margin-top: 0.6rem; }
   .row { display: flex; gap: 0.5rem; }
   .status { font-size: 0.85rem; margin-top: 0.5rem; }
@@ -107,7 +107,6 @@
   .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
   .empty { color: var(--muted); font-size: 0.88rem; font-style: italic; }
 
-  /* Recipes tab: image gallery grid */
   .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
   .recipe-card { cursor: pointer; }
   .recipe-card .thumb {
@@ -123,7 +122,6 @@
   .recipe-card .recipe-title { margin-top: 0.4rem; font-size: 0.85rem; }
   .recipe-card .recipe-meta { font-size: 0.72rem; }
 
-  /* Staples management */
   .staple-pill-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
   .staple-pill {
     display: flex; align-items: center; gap: 0.35rem;
@@ -137,7 +135,6 @@
   }
   .staple-pill button:active { background: var(--line); }
 
-  /* Shopping list — till receipt with collapsible categories */
   .receipt {
     background: #fff;
     font-family: 'JetBrains Mono', monospace;
@@ -177,6 +174,7 @@
   .receipt-line .item-info { flex: 1; }
   .receipt-line .qty { color: var(--forest); white-space: nowrap; font-weight: 600; }
   .receipt-line .used-in { display: block; font-size: 0.66rem; color: var(--muted); font-family: 'Inter', sans-serif; margin-top: 0.1rem; }
+  .receipt-line .note { display: block; font-size: 0.66rem; color: var(--forest); font-family: 'Inter', sans-serif; margin-top: 0.1rem; font-style: italic; }
   .receipt-line .item-actions { display: flex; gap: 0.3rem; }
   .receipt-line .item-actions button {
     font-family: 'Inter', sans-serif; font-size: 0.68rem; padding: 0.3rem 0.5rem; border-radius: 6px;
@@ -192,10 +190,13 @@
   }
   .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 6px; }
 
-  .plan-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 0.8rem; margin-bottom: 0.6rem; cursor: pointer; }
-  .plan-card:active { background: var(--paper); }
-  .plan-card .plan-date { font-weight: 600; font-size: 0.9rem; }
-  .plan-card .plan-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+  .batch-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 0.8rem; margin-bottom: 0.6rem; cursor: pointer; }
+  .batch-card:active { background: var(--paper); }
+  .batch-card .batch-date { font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+  .batch-card .batch-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+  .badge { font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .badge-planning { background: #FCEFD1; color: #8A6416; }
+  .badge-ordered { background: #DCE9DC; color: var(--forest); }
 
   .instructions-recipe { margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--line); }
   .instructions-recipe:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -205,7 +206,6 @@
   .instructions-recipe ol li { margin-bottom: 0.5rem; }
   .back-link { font-size: 0.85rem; color: var(--forest); font-weight: 600; cursor: pointer; margin-bottom: 0.8rem; display: inline-block; }
 
-  /* Recipe detail overlay — portion scaling lives here */
   .overlay {
     display: none; position: fixed; inset: 0; background: var(--paper);
     z-index: 20; overflow-y: auto;
@@ -223,12 +223,15 @@
   }
   .overlay-title { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; margin: 0 0 0.4rem; }
   .overlay-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+  .nickname-row { margin-bottom: 1rem; }
+  .nickname-row label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 0.25rem; }
   .scale-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
   .scale-row label { font-size: 0.85rem; color: var(--muted); }
   .scale-row input { width: 70px; }
   .overlay-ing-list { font-size: 0.9rem; padding-left: 1.1rem; margin-bottom: 1.2rem; }
   .overlay-ing-list li { margin-bottom: 0.3rem; }
   .overlay-ing-list .qty { font-weight: 600; color: var(--forest); font-family: 'JetBrains Mono', monospace; }
+  .add-to-batch-box { border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem; }
 </style>
 </head>
 <body>
@@ -239,7 +242,7 @@
 
 <div class="tabbar">
   <button id="tabbtn-shopping" class="active" onclick="switchTab('shopping')">Shopping</button>
-  <button id="tabbtn-week" onclick="switchTab('week')">This week</button>
+  <button id="tabbtn-batches" onclick="switchTab('batches')">Batches</button>
   <button id="tabbtn-recipes" onclick="switchTab('recipes')">Recipes</button>
   <button id="tabbtn-settings" onclick="switchTab('settings')">Settings</button>
 </div>
@@ -248,43 +251,43 @@
 
   <!-- SHOPPING TAB -->
   <div id="tab-shopping" class="tab-content active">
-    <section id="noPlanNotice">
-      <p class="empty">No shopping list yet — go to <strong>This week</strong> to pick your meals and start one.</p>
+    <section id="shoppingChooserSection">
+      <h2>Choose a batch to shop</h2>
+      <div id="shoppingChooserList" class="empty">Loading…</div>
     </section>
-    <section id="activePlanSection" style="display:none;">
-      <h2>This week's shopping list</h2>
+
+    <section id="activeShoppingSection" style="display:none;">
+      <span class="back-link" onclick="backToShoppingChooser()">&larr; Choose a different batch</span>
+      <h2 id="shoppingBatchTitle">Shopping list</h2>
+      <div class="row" style="margin-bottom:0.8rem;">
+        <button class="btn-ai btn-full" onclick="sortWithAI()">✨ Sort with AI</button>
+      </div>
       <div id="receiptWrap"></div>
       <button class="btn-primary btn-full" onclick="markOrdered()">Mark as ordered</button>
       <div id="orderStatus" class="status"></div>
     </section>
   </div>
 
-  <!-- THIS WEEK TAB -->
-  <div id="tab-week" class="tab-content">
-    <section id="pickerSection" style="display:none;">
-      <h2>Plan this week</h2>
+  <!-- BATCHES TAB -->
+  <div id="tab-batches" class="tab-content">
+    <section>
+      <h2>Start a new batch</h2>
       <div id="recipeListPicker" class="empty">Loading…</div>
       <label style="font-size:0.85rem; color:var(--muted); display:block; margin-top:0.8rem;">Servings needed</label>
       <input type="number" id="servingsTarget" value="2" min="1" style="margin-top:0.3rem;">
-      <button class="btn-primary btn-full" onclick="startPlan()">Start this week's plan</button>
-      <div id="planStatus" class="status"></div>
+      <button class="btn-primary btn-full" onclick="startBatch()">Create batch</button>
+      <div id="batchStatus" class="status"></div>
     </section>
 
-    <section id="planSummarySection" style="display:none;">
-      <h2>This week is planned</h2>
-      <div id="planSummaryContent"></div>
-      <p class="empty" style="margin-top:0.6rem;">See the <strong>Shopping</strong> tab for the list.</p>
+    <section id="batchListSection">
+      <h2>Your batches</h2>
+      <div id="batchList" class="empty">Loading…</div>
     </section>
 
-    <section id="pastWeeksSection" style="display:none;">
-      <h2>Past weeks</h2>
-      <div id="pastWeeksList"></div>
-    </section>
-
-    <section id="planDetailSection" style="display:none;">
-      <span class="back-link" onclick="showPastWeeks()">&larr; Back to past weeks</span>
-      <h2 id="planDetailTitle">Meals this week</h2>
-      <div id="planDetailContent"></div>
+    <section id="batchDetailSection" style="display:none;">
+      <span class="back-link" onclick="closeBatchDetail()">&larr; Back to batches</span>
+      <h2 id="batchDetailTitle">Batch</h2>
+      <div id="batchDetailContent"></div>
     </section>
   </div>
 
@@ -316,7 +319,7 @@
 
 </main>
 
-<!-- Recipe detail overlay (portion scaling) -->
+<!-- Recipe detail overlay (nickname + portion scaling + add to batch) -->
 <div class="overlay" id="recipeOverlay">
   <div class="overlay-header">
     <span class="back-link" onclick="closeRecipeDetail()">&larr; Back to recipes</span>
@@ -328,8 +331,31 @@
 const API = '';
 
 let recipes = [];
-let currentPlan = null;
+let batches = [];
+let selectedShoppingBatchId = null;
 let currentRecipeDetail = null;
+let lastShoppingListData = null;
+
+// ---------- Helpers ----------
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function cap(str) {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function displayName(recipe) {
+  return (recipe.nickname && recipe.nickname.trim()) ? recipe.nickname : recipe.title;
+}
+
+function formatBatchDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+}
 
 // ---------- Tabs ----------
 
@@ -340,7 +366,7 @@ function switchTab(name) {
   document.getElementById(`tabbtn-${name}`).classList.add('active');
 }
 
-// ---------- Staples management ----------
+// ---------- Staples ----------
 
 async function loadStaples() {
   const res = await fetch(`${API}/api/staples`);
@@ -372,7 +398,7 @@ async function addStaple() {
   });
   input.value = '';
   loadStaples();
-  if (currentPlan) loadActivePlanList();
+  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
 }
 
 async function removeStaple(id) {
@@ -382,10 +408,10 @@ async function removeStaple(id) {
     body: JSON.stringify({ id })
   });
   loadStaples();
-  if (currentPlan) loadActivePlanList();
+  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
 }
 
-// ---------- Recipes: import, gallery, detail with portion scaling ----------
+// ---------- Recipes: import, gallery, detail (nickname + scaling + add to batch) ----------
 
 async function loadRecipes() {
   const res = await fetch(`${API}/api/recipes`);
@@ -404,7 +430,7 @@ function renderRecipeGrid() {
       ${r.image_url
         ? `<img class="thumb" src="${escapeHtml(r.image_url)}" alt="" onerror="this.outerHTML='<div class=&quot;thumb-placeholder&quot;>🍽️</div>'">`
         : `<div class="thumb-placeholder">🍽️</div>`}
-      <div class="recipe-title">${escapeHtml(r.title)}</div>
+      <div class="recipe-title">${escapeHtml(displayName(r))}</div>
       <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : ''}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
     </div>
   `).join('')}</div>`;
@@ -458,6 +484,18 @@ function closeRecipeDetail() {
   currentRecipeDetail = null;
 }
 
+async function saveNickname() {
+  const nickname = document.getElementById('nicknameInput').value.trim();
+  const res = await fetch(`${API}/api/recipe?id=${currentRecipeDetail.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nickname })
+  });
+  const updated = await res.json();
+  currentRecipeDetail.nickname = updated.nickname;
+  loadRecipes();
+}
+
 function renderRecipeDetail(targetServings) {
   const r = currentRecipeDetail;
   const original = r.servings;
@@ -465,13 +503,21 @@ function renderRecipeDetail(targetServings) {
 
   const ingredientsHtml = r.ingredients.map(ing => {
     const scaledQty = ing.quantity !== null ? Math.round(ing.quantity * scale * 100) / 100 : null;
-    return `<li>${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(ing.item)}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}</li>`;
+    return `<li>${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}</li>`;
   }).join('');
+
+  const planningBatches = batches.filter(b => b.status === 'planning');
 
   document.getElementById('recipeOverlayContent').innerHTML = `
     ${r.image_url ? `<img class="overlay-img" src="${escapeHtml(r.image_url)}" alt="" onerror="this.outerHTML='<div class=&quot;overlay-img-placeholder&quot;>🍽️</div>'">` : `<div class="overlay-img-placeholder">🍽️</div>`}
-    <div class="overlay-title">${escapeHtml(r.title)}</div>
+    <div class="overlay-title">${escapeHtml(displayName(r))}</div>
     <div class="overlay-meta">${r.cook_time_minutes ? `${r.cook_time_minutes} min · ` : ''}${r.confidence === 'low' ? 'low-confidence import, worth double-checking' : ''}</div>
+
+    <div class="nickname-row">
+      <label>Nickname (shortens it everywhere in the app)</label>
+      <input type="text" id="nicknameInput" value="${escapeHtml(r.nickname || '')}" placeholder="${escapeHtml(r.title)}" onchange="saveNickname()">
+    </div>
+
     <div class="scale-row">
       <label>Servings</label>
       <input type="number" id="scaleServings" value="${targetServings}" min="1" onchange="renderRecipeDetail(parseInt(this.value,10) || 1)">
@@ -479,10 +525,38 @@ function renderRecipeDetail(targetServings) {
     </div>
     <ul class="overlay-ing-list">${ingredientsHtml}</ul>
     ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
+
+    <div class="add-to-batch-box">
+      <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.4rem;">Add to a batch</label>
+      ${planningBatches.length ? `
+        <select id="addToBatchSelect">
+          ${planningBatches.map(b => `<option value="${b.id}">${formatBatchDate(b.week_start_date)} (serves ${b.servings_target})</option>`).join('')}
+        </select>
+        <button class="btn-primary btn-full" onclick="addToExistingBatch()">Add to selected batch</button>
+      ` : '<p class="empty">No open batches yet — create one from the Batches tab, or add this recipe once you do.</p>'}
+    </div>
   `;
 }
 
-// ---------- This week: picker ----------
+async function addToExistingBatch() {
+  const batchId = document.getElementById('addToBatchSelect').value;
+  await fetch(`${API}/api/weekly-plan?id=${batchId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeId: currentRecipeDetail.id })
+  });
+  closeRecipeDetail();
+  await loadBatches();
+  renderBatchList();
+}
+
+// ---------- Batches tab ----------
+
+async function loadBatches() {
+  const res = await fetch(`${API}/api/weekly-plans`);
+  batches = await res.json();
+  batches.sort((a, b) => new Date(b.week_start_date) - new Date(a.week_start_date));
+}
 
 function renderPicker() {
   const el = document.getElementById('recipeListPicker');
@@ -494,17 +568,17 @@ function renderPicker() {
     <div class="recipe-item">
       <input type="checkbox" value="${r.id}" id="pick-${r.id}">
       <label for="pick-${r.id}" style="flex:1;">
-        <div class="recipe-title">${escapeHtml(r.title)}</div>
+        <div class="recipe-title">${escapeHtml(displayName(r))}</div>
         <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : 'servings unknown'}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
       </label>
     </div>
   `).join('');
 }
 
-async function startPlan() {
+async function startBatch() {
   const checked = [...document.querySelectorAll('#recipeListPicker input[type=checkbox]:checked')].map(c => c.value);
   const servingsTarget = parseInt(document.getElementById('servingsTarget').value, 10) || 2;
-  const status = document.getElementById('planStatus');
+  const status = document.getElementById('batchStatus');
 
   if (!checked.length) {
     status.textContent = 'Tick at least one recipe first.';
@@ -512,7 +586,7 @@ async function startPlan() {
     return;
   }
 
-  status.textContent = 'Starting your week…';
+  status.textContent = 'Creating batch…';
   status.className = 'status';
 
   try {
@@ -522,46 +596,136 @@ async function startPlan() {
       body: JSON.stringify({ recipeIds: checked, servingsTarget })
     });
     const plan = await res.json();
-    if (!res.ok) throw new Error(plan.error || 'Failed to start plan');
+    if (!res.ok) throw new Error(plan.error || 'Failed to create batch');
 
-    currentPlan = plan;
-    await showActiveWeekState();
-    await loadActivePlanList();
+    status.textContent = 'Batch created!';
+    status.className = 'status ok';
+    document.querySelectorAll('#recipeListPicker input[type=checkbox]').forEach(c => c.checked = false);
+    await loadBatches();
+    renderBatchList();
+    renderShoppingChooser();
   } catch (err) {
     status.textContent = err.message;
     status.className = 'status error';
   }
 }
 
-async function showActiveWeekState() {
-  document.getElementById('pickerSection').style.display = 'none';
-  document.getElementById('planSummarySection').style.display = 'block';
-
-  const res = await fetch(`${API}/api/weekly-plan?id=${currentPlan.id}`);
-  const plan = await res.json();
-  document.getElementById('planSummaryContent').innerHTML = `
-    <div class="recipe-meta" style="margin-bottom:0.5rem;">serves ${plan.servings_target}</div>
-    ${plan.recipes.map(r => `<div class="recipe-item"><span class="recipe-title">${escapeHtml(r.title)}</span></div>`).join('')}
-  `;
+function renderBatchList() {
+  const el = document.getElementById('batchList');
+  if (!batches.length) {
+    el.innerHTML = '<div class="empty">No batches yet — create one above.</div>';
+    return;
+  }
+  el.innerHTML = batches.map(b => `
+    <div class="batch-card" onclick="openBatchDetail('${b.id}')">
+      <div class="batch-date">
+        ${formatBatchDate(b.week_start_date)}
+        <span class="badge badge-${b.status}">${b.status}</span>
+      </div>
+      <div class="batch-meta">serves ${b.servings_target}</div>
+    </div>
+  `).join('');
 }
 
-// ---------- Shopping tab (active plan's list) ----------
+async function openBatchDetail(batchId) {
+  const res = await fetch(`${API}/api/weekly-plan?id=${batchId}`);
+  const batch = await res.json();
 
-async function loadActivePlanList() {
-  document.getElementById('noPlanNotice').style.display = 'none';
-  document.getElementById('activePlanSection').style.display = 'block';
+  document.getElementById('batchListSection').style.display = 'none';
+  document.getElementById('batchDetailSection').style.display = 'block';
+  document.getElementById('batchDetailTitle').innerHTML = `${formatBatchDate(batch.week_start_date)} <span class="badge badge-${batch.status}">${batch.status}</span>`;
 
-  const res = await fetch(`${API}/api/weekly-plan-shopping-list?id=${currentPlan.id}`);
+  if (batch.status === 'planning') {
+    const otherRecipes = recipes.filter(r => !batch.recipes.some(br => br.id === r.id));
+    document.getElementById('batchDetailContent').innerHTML = `
+      <div style="margin-bottom:1rem;">
+        ${batch.recipes.map(r => `<div class="recipe-item"><span class="recipe-title">${escapeHtml(displayName(r))}</span></div>`).join('')}
+      </div>
+      ${otherRecipes.length ? `
+        <div class="row" style="margin-bottom:0.8rem;">
+          <select id="addRecipeSelect">
+            ${otherRecipes.map(r => `<option value="${r.id}">${escapeHtml(displayName(r))}</option>`).join('')}
+          </select>
+          <button class="btn-secondary" onclick="addRecipeToBatch('${batch.id}')">Add</button>
+        </div>
+      ` : '<p class="empty">All your recipes are already in this batch.</p>'}
+      <button class="btn-primary btn-full" onclick="switchTab('shopping'); selectShoppingBatch('${batch.id}')">Shop this batch</button>
+    `;
+  } else {
+    document.getElementById('batchDetailContent').innerHTML = batch.recipes.map(r => `
+      <div class="instructions-recipe">
+        <h3>${escapeHtml(displayName(r))}</h3>
+        <div class="ing-list">${r.ingredients.map(i => escapeHtml(cap(i.item))).join(', ')}</div>
+        ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
+      </div>
+    `).join('');
+  }
+}
+
+async function addRecipeToBatch(batchId) {
+  const recipeId = document.getElementById('addRecipeSelect').value;
+  await fetch(`${API}/api/weekly-plan?id=${batchId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeId })
+  });
+  openBatchDetail(batchId);
+}
+
+function closeBatchDetail() {
+  document.getElementById('batchDetailSection').style.display = 'none';
+  document.getElementById('batchListSection').style.display = 'block';
+  loadBatches().then(renderBatchList);
+}
+
+// ---------- Shopping tab ----------
+
+function renderShoppingChooser() {
+  const planning = batches.filter(b => b.status === 'planning');
+  const el = document.getElementById('shoppingChooserList');
+
+  if (!planning.length) {
+    el.innerHTML = '<div class="empty">No open batches — create one on the <strong>Batches</strong> tab first.</div>';
+    return;
+  }
+
+  el.innerHTML = planning.map(b => `
+    <div class="batch-card" onclick="selectShoppingBatch('${b.id}')">
+      <div class="batch-date">${formatBatchDate(b.week_start_date)}</div>
+      <div class="batch-meta">serves ${b.servings_target}</div>
+    </div>
+  `).join('');
+}
+
+async function selectShoppingBatch(batchId) {
+  selectedShoppingBatchId = batchId;
+  document.getElementById('shoppingChooserSection').style.display = 'none';
+  document.getElementById('activeShoppingSection').style.display = 'block';
+  await loadShoppingList(batchId);
+}
+
+function backToShoppingChooser() {
+  selectedShoppingBatchId = null;
+  document.getElementById('activeShoppingSection').style.display = 'none';
+  document.getElementById('shoppingChooserSection').style.display = 'block';
+  loadBatches().then(renderShoppingChooser);
+}
+
+async function loadShoppingList(batchId) {
+  const res = await fetch(`${API}/api/weekly-plan-shopping-list?id=${batchId}`);
   const data = await res.json();
+  lastShoppingListData = data;
+  document.getElementById('shoppingBatchTitle').textContent = 'Shopping list';
   renderReceipt(data);
 }
 
-function renderReceipt(data) {
+function renderReceipt(data, aiCleaned) {
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  const list = aiCleaned || data.shoppingList;
 
   const categoryOrder = ['Fruit & Veg', 'Meat & Fish', 'Dairy & Eggs', 'Bakery', 'Frozen', 'Store Cupboard', 'Herbs & Spices', 'Other'];
   const grouped = {};
-  data.shoppingList.forEach(item => {
+  list.forEach(item => {
     (grouped[item.category] = grouped[item.category] || []).push(item);
   });
 
@@ -573,8 +737,9 @@ function renderReceipt(data) {
         ${grouped[cat].map(item => `
           <div class="receipt-line" data-item="${escapeHtml(item.item)}">
             <span class="item-info">
-              ${escapeHtml(item.item)}
+              ${escapeHtml(cap(item.item))}
               <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
+              ${item.note ? `<span class="note">${escapeHtml(item.note)}</span>` : ''}
             </span>
             <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
             <span class="item-actions">
@@ -588,10 +753,10 @@ function renderReceipt(data) {
 
   const sortedThisWeek = data.excludedAsAlreadyHave.length
     ? `<details class="sorted-section">
-        <summary>Already sorted this week (${data.excludedAsAlreadyHave.length}) — tap to view/undo</summary>
+        <summary>Already sorted this batch (${data.excludedAsAlreadyHave.length}) — tap to view/undo</summary>
         ${data.excludedAsAlreadyHave.map(name => `
           <div class="sorted-line">
-            ${escapeHtml(name)}
+            ${escapeHtml(cap(name))}
             <button onclick="undoGotIt('${escapeHtml(name)}')">Undo</button>
           </div>
         `).join('')}
@@ -602,7 +767,7 @@ function renderReceipt(data) {
     <div class="receipt">
       <div class="receipt-header">
         <div class="r-title">Shopping List</div>
-        <div class="r-sub">${date} · serves ${data.servingsTarget} · ${data.recipeCount} recipe${data.recipeCount === 1 ? '' : 's'}</div>
+        <div class="r-sub">${date} · serves ${data.servingsTarget} · ${data.recipeCount} recipe${data.recipeCount === 1 ? '' : 's'}${aiCleaned ? ' · tidied by AI' : ''}</div>
       </div>
       <div class="receipt-divider"></div>
       ${categoryHtml || '<div class="empty">Nothing left to buy — you have it all!</div>'}
@@ -611,22 +776,47 @@ function renderReceipt(data) {
   `;
 }
 
+async function sortWithAI() {
+  if (!lastShoppingListData || !lastShoppingListData.shoppingList.length) return;
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.textContent = 'Sorting…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/api/ai-shopping-cleanup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shoppingList: lastShoppingListData.shoppingList })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'AI cleanup failed');
+
+    renderReceipt(lastShoppingListData, data.cleanedList);
+  } catch (err) {
+    alert('AI sort failed: ' + err.message + ' — showing the original list.');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
 async function markGotIt(itemName) {
   await fetch(`${API}/api/weekly-plan-exclude`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ planId: currentPlan.id, itemName })
+    body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
   });
-  loadActivePlanList();
+  loadShoppingList(selectedShoppingBatchId);
 }
 
 async function undoGotIt(itemName) {
   await fetch(`${API}/api/weekly-plan-exclude`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ planId: currentPlan.id, itemName })
+    body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
   });
-  loadActivePlanList();
+  loadShoppingList(selectedShoppingBatchId);
 }
 
 async function markStaple(itemName) {
@@ -636,7 +826,7 @@ async function markStaple(itemName) {
     body: JSON.stringify({ itemName })
   });
   loadStaples();
-  loadActivePlanList();
+  loadShoppingList(selectedShoppingBatchId);
 }
 
 async function markOrdered() {
@@ -645,73 +835,19 @@ async function markOrdered() {
   status.className = 'status';
 
   try {
-    const res = await fetch(`${API}/api/weekly-plan?id=${currentPlan.id}`, {
+    const res = await fetch(`${API}/api/weekly-plan?id=${selectedShoppingBatchId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'ordered' })
     });
     if (!res.ok) throw new Error('Failed to mark as ordered');
 
-    currentPlan = null;
-    document.getElementById('activePlanSection').style.display = 'none';
-    document.getElementById('noPlanNotice').style.display = 'block';
-    document.getElementById('planSummarySection').style.display = 'none';
-    document.getElementById('pickerSection').style.display = 'block';
     status.textContent = '';
-    renderPicker();
-    loadPastWeeks();
+    backToShoppingChooser();
   } catch (err) {
     status.textContent = err.message;
     status.className = 'status error';
   }
-}
-
-// ---------- Past weeks ----------
-
-async function loadPastWeeks() {
-  const res = await fetch(`${API}/api/weekly-plans`);
-  const plans = await res.json();
-  const ordered = plans.filter(p => p.status === 'ordered');
-
-  const section = document.getElementById('pastWeeksSection');
-  if (!ordered.length) { section.style.display = 'none'; return; }
-
-  section.style.display = 'block';
-  document.getElementById('pastWeeksList').innerHTML = ordered.map(p => `
-    <div class="plan-card" onclick="showPlanDetail('${p.id}')">
-      <div class="plan-date">${new Date(p.week_start_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</div>
-      <div class="plan-meta">serves ${p.servings_target}</div>
-    </div>
-  `).join('');
-}
-
-async function showPlanDetail(planId) {
-  const res = await fetch(`${API}/api/weekly-plan?id=${planId}`);
-  const plan = await res.json();
-
-  document.getElementById('pastWeeksSection').style.display = 'none';
-  document.getElementById('planDetailSection').style.display = 'block';
-  document.getElementById('planDetailTitle').textContent =
-    new Date(plan.week_start_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
-
-  document.getElementById('planDetailContent').innerHTML = plan.recipes.map(r => `
-    <div class="instructions-recipe">
-      <h3>${escapeHtml(r.title)}</h3>
-      <div class="ing-list">${r.ingredients.map(i => escapeHtml(i.item)).join(', ')}</div>
-      ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
-    </div>
-  `).join('');
-}
-
-function showPastWeeks() {
-  document.getElementById('planDetailSection').style.display = 'none';
-  loadPastWeeks();
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }
 
 // ---------- Init ----------
@@ -719,20 +855,11 @@ function escapeHtml(str) {
 async function init() {
   await loadStaples();
   await loadRecipes();
+  await loadBatches();
 
-  const res = await fetch(`${API}/api/weekly-plans`);
-  const plans = await res.json();
-  const inProgress = plans.find(p => p.status === 'planning');
-
-  if (inProgress) {
-    currentPlan = inProgress;
-    await showActiveWeekState();
-    await loadActivePlanList();
-  } else {
-    document.getElementById('pickerSection').style.display = 'block';
-    renderPicker();
-  }
-  loadPastWeeks();
+  renderPicker();
+  renderBatchList();
+  renderShoppingChooser();
 }
 
 init();
