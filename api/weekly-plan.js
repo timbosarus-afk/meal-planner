@@ -1,14 +1,21 @@
-// Vercel serverless function — detail + status updates for one weekly plan.
-// GET ?id=<planId> returns the plan plus its recipes (with ingredients and
+// Vercel serverless function — detail + status updates for one batch
+// (internally still called a "weekly plan" in the schema/table names, but
+// the UI now calls these "batches" since they're not tied to a calendar
+// week — could be several a week, or span more than one).
+// GET ?id=<planId> returns the batch plus its recipes (with ingredients and
 // cooking steps) — this is what powers the "what am I cooking, how do I
-// make it" view once a plan has been marked ordered.
+// make it" view once a batch has been marked ordered, and the "what's in
+// this batch" view while it's still being built up.
 // PATCH ?id=<planId> with { status: 'ordered' } marks it ordered.
+// POST ?id=<planId> with { recipeId } adds one more recipe to an existing
+// batch — this is the "add to batch" action from either the Batches tab or
+// the Recipes tab.
 
 const { supabase } = require('../lib/db');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -28,7 +35,7 @@ module.exports = async (req, res) => {
 
       const { data: planRecipes, error: prError } = await supabase
         .from('weekly_plan_recipes')
-        .select('recipe_id, servings_override, recipes(id, title, servings, source_url, steps, cook_time_minutes)')
+        .select('recipe_id, servings_override, recipes(id, title, nickname, servings, source_url, steps, cook_time_minutes, image_url)')
         .eq('weekly_plan_id', id);
       if (prError) throw new Error(prError.message);
 
@@ -53,6 +60,22 @@ module.exports = async (req, res) => {
     return;
   }
 
+  if (req.method === 'POST') {
+    const { recipeId } = req.body || {};
+    if (!recipeId) { res.status(400).json({ error: 'Missing "recipeId" in request body' }); return; }
+
+    const { data, error } = await supabase
+      .from('weekly_plan_recipes')
+      .insert({ weekly_plan_id: id, recipe_id: recipeId })
+      .select()
+      .single();
+
+    // Unique constraint violation (already in this batch) is fine, not an error
+    if (error && error.code !== '23505') { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json(data || { weekly_plan_id: id, recipe_id: recipeId });
+    return;
+  }
+
   if (req.method === 'PATCH') {
     const { status } = req.body || {};
     if (!status) { res.status(400).json({ error: 'Missing "status" in request body' }); return; }
@@ -65,5 +88,5 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(405).json({ error: 'Use GET or PATCH' });
+  res.status(405).json({ error: 'Use GET, POST, or PATCH' });
 };
