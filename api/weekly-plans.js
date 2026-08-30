@@ -1,6 +1,8 @@
-// Vercel serverless function — the weekly plan itself (not just an ad-hoc
-// shopping list). GET lists all plans (most recent first). POST creates a
-// new plan: { recipeIds, servingsTarget } — status starts as 'planning'.
+// Vercel serverless function — a batch (internally still the "weekly_plans"
+// table). GET lists all batches (most recent first). POST creates a new
+// batch: { recipes: [{ recipeId, servingsOverride }], servingsTarget } —
+// status starts as 'planning'. Also accepts the older { recipeIds: [...] }
+// shape (no per-recipe servings) for backward compatibility.
 
 const { supabase } = require('../lib/db');
 
@@ -27,10 +29,15 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    const { recipeIds, servingsTarget = 2, weekStartDate } = req.body || {};
+    const { recipes, recipeIds, servingsTarget = 2, weekStartDate } = req.body || {};
 
-    if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
-      res.status(400).json({ error: 'Missing or empty "recipeIds" array' });
+    // Normalise both input shapes into [{ recipeId, servingsOverride }]
+    const recipeEntries = Array.isArray(recipes)
+      ? recipes
+      : (Array.isArray(recipeIds) ? recipeIds.map(id => ({ recipeId: id, servingsOverride: null })) : []);
+
+    if (!recipeEntries.length) {
+      res.status(400).json({ error: 'Missing or empty "recipes"/"recipeIds"' });
       return;
     }
 
@@ -47,13 +54,17 @@ module.exports = async (req, res) => {
 
       if (planError) throw new Error(planError.message);
 
-      const planRecipeRows = recipeIds.map(recipeId => ({ weekly_plan_id: plan.id, recipe_id: recipeId }));
+      const planRecipeRows = recipeEntries.map(r => ({
+        weekly_plan_id: plan.id,
+        recipe_id: r.recipeId,
+        servings_override: r.servingsOverride || null
+      }));
       const { error: recipesError } = await supabase.from('weekly_plan_recipes').insert(planRecipeRows);
       if (recipesError) throw new Error(recipesError.message);
 
       res.status(200).json(plan);
     } catch (err) {
-      console.error('Failed to create weekly plan:', err);
+      console.error('Failed to create batch:', err);
       res.status(500).json({ error: err.message });
     }
     return;
