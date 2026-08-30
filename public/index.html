@@ -760,9 +760,7 @@ function renderBatchList() {
     return;
   }
 
-  el.innerHTML = batches.map(b => {
-    const batchRecipes = recipes.filter(r => b._recipeIds && b._recipeIds.includes(r.id));
-    return `
+  el.innerHTML = batches.map(b => `
     <div class="batch-card">
       <div class="batch-date-row">
         <div>
@@ -774,8 +772,7 @@ function renderBatchList() {
       <div id="batch-strip-${b.id}"><span class="empty">Loading meals…</span></div>
       <button class="btn-secondary btn-full btn-sm" onclick="openBatchDetail('${b.id}')">View batch</button>
     </div>
-  `;
-  }).join('');
+  `).join('');
 
   // Fetch each batch's recipes for the photo strip (lightweight, only IDs+images needed)
   batches.forEach(b => loadBatchStrip(b.id));
