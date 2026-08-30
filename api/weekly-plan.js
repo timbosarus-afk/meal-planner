@@ -7,15 +7,17 @@
 // make it" view once a batch has been marked ordered, and the "what's in
 // this batch" view while it's still being built up.
 // PATCH ?id=<planId> with { status: 'ordered' } marks it ordered.
-// POST ?id=<planId> with { recipeId } adds one more recipe to an existing
-// batch — this is the "add to batch" action from either the Batches tab or
-// the Recipes tab.
+// POST ?id=<planId> with { recipeId, servingsOverride } adds one more
+// recipe to an existing batch.
+// DELETE ?id=<planId> with { recipeId } removes a recipe from a batch. The
+// caller (frontend) is responsible for warning the user first if the batch
+// is already 'ordered' — this endpoint just performs the removal.
 
 const { supabase } = require('../lib/db');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -61,12 +63,12 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    const { recipeId } = req.body || {};
+    const { recipeId, servingsOverride } = req.body || {};
     if (!recipeId) { res.status(400).json({ error: 'Missing "recipeId" in request body' }); return; }
 
     const { data, error } = await supabase
       .from('weekly_plan_recipes')
-      .insert({ weekly_plan_id: id, recipe_id: recipeId })
+      .insert({ weekly_plan_id: id, recipe_id: recipeId, servings_override: servingsOverride || null })
       .select()
       .single();
 
@@ -88,5 +90,20 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(405).json({ error: 'Use GET, POST, or PATCH' });
+  if (req.method === 'DELETE') {
+    const { recipeId } = req.body || {};
+    if (!recipeId) { res.status(400).json({ error: 'Missing "recipeId" in request body' }); return; }
+
+    const { error } = await supabase
+      .from('weekly_plan_recipes')
+      .delete()
+      .eq('weekly_plan_id', id)
+      .eq('recipe_id', recipeId);
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ removed: recipeId });
+    return;
+  }
+
+  res.status(405).json({ error: 'Use GET, POST, PATCH, or DELETE' });
 };
