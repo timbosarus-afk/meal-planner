@@ -8,13 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #F5F7F2;
-    --ink: #1F2A1E;
-    --forest: #2F5233;
-    --forest-dark: #223D26;
+    --paper: #FFF8F0;
+    --ink: #2A2A2A;
+    --forest: #1B4D3E;
+    --forest-dark: #123329;
     --mustard: #D9A441;
-    --line: #C9D0C2;
-    --muted: #6B7566;
+    --red: #D5442D;
+    --red-dark: #B3392A;
+    --line: #EAE0D5;
+    --muted: #767066;
     --card: #FFFFFF;
   }
   * { box-sizing: border-box; }
@@ -28,7 +30,7 @@
   }
   header {
     background: var(--forest);
-    color: var(--paper);
+    color: #fff;
     padding: 1.25rem 1.25rem 1rem;
   }
   header h1 {
@@ -46,7 +48,7 @@
   }
   .tabbar button {
     flex: 1; background: none; border: none; border-radius: 0;
-    color: #C9D9C5; font-size: 0.8rem; font-weight: 700; padding: 0.75rem 0.4rem;
+    color: #B9CFC6; font-size: 0.8rem; font-weight: 700; padding: 0.75rem 0.4rem;
     font-family: 'Nunito', sans-serif; cursor: pointer;
   }
   .tabbar button.active { color: #fff; border-bottom: 3px solid var(--mustard); }
@@ -57,22 +59,23 @@
 
   section {
     background: var(--card);
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 1.1rem;
     margin-bottom: 1rem;
-    box-shadow: 0 1px 3px rgba(31,42,30,0.08);
+    box-shadow: 0 4px 16px rgba(27,77,62,0.07);
   }
   section h2 {
     font-family: 'Nunito', sans-serif;
     font-size: 1.1rem;
     font-weight: 800;
+    color: var(--forest);
     margin: 0 0 0.75rem;
   }
   select, input[type=text], input[type=number], input[type=url] {
     width: 100%;
     padding: 0.7rem 0.85rem;
     border: 1.5px solid var(--line);
-    border-radius: 12px;
+    border-radius: 14px;
     font-size: 0.95rem;
     font-family: inherit;
     background: var(--paper);
@@ -85,46 +88,51 @@
     font-size: 0.9rem;
     border: none;
     border-radius: 999px;
-    padding: 0.7rem 1.2rem;
+    padding: 0.75rem 1.2rem;
     cursor: pointer;
   }
   .btn-primary { background: var(--forest); color: #fff; }
   .btn-primary:active { background: var(--forest-dark); }
   .btn-secondary { background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); }
   .btn-ai { background: var(--mustard); color: var(--ink); }
-  .btn-danger { background: #fff; color: #B3432B; border: 1.5px solid #B3432B; }
+  .btn-danger { background: var(--red); color: #fff; }
   .btn-full { width: 100%; margin-top: 0.6rem; }
   .btn-sm { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
   .row { display: flex; gap: 0.5rem; align-items: center; }
   .status { font-size: 0.85rem; margin-top: 0.5rem; }
-  .status.error { color: #B3432B; }
+  .status.error { color: var(--red); }
   .status.ok { color: var(--forest); }
   .recipe-item {
     display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.5rem 0; border-bottom: 1px solid var(--line);
+    padding: 0.55rem 0; border-bottom: 1px solid var(--line);
   }
   .recipe-item:last-child { border-bottom: none; }
-  .recipe-item .thumb-sm { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .recipe-item .thumb-sm { width: 52px; height: 52px; border-radius: 16px; object-fit: cover; flex-shrink: 0; }
   .recipe-item .thumb-sm-placeholder {
-    width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+    width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0;
     background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
-    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
   }
-  .recipe-title { font-weight: 700; font-size: 0.95rem; font-family: 'Nunito', sans-serif; }
+  .recipe-title { font-weight: 700; font-size: 0.95rem; font-family: 'Nunito', sans-serif; color: #1a1a1a; }
   .recipe-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
   .empty { color: var(--muted); font-size: 0.88rem; font-style: italic; }
+  .icon-btn {
+    background: var(--red); color: #fff; width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem; padding: 0; flex-shrink: 0;
+  }
+  .icon-btn:active { background: var(--red-dark); }
 
   .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
   .recipe-card { position: relative; }
   .recipe-card .thumb {
-    width: 100%; aspect-ratio: 4/3; border-radius: 14px; object-fit: cover;
+    width: 100%; aspect-ratio: 4/3; border-radius: 18px; object-fit: cover;
     background: var(--paper); display: block;
   }
   .recipe-card .thumb-placeholder {
-    width: 100%; aspect-ratio: 4/3; border-radius: 14px;
+    width: 100%; aspect-ratio: 4/3; border-radius: 18px;
     background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
     display: flex; align-items: center; justify-content: center;
-    color: #C9D9C5; font-size: 2rem;
+    color: #B9CFC6; font-size: 2rem;
   }
   .recipe-card .recipe-title { margin-top: 0.4rem; font-size: 0.85rem; }
   .recipe-card .recipe-meta { font-size: 0.72rem; }
@@ -132,7 +140,7 @@
     position: absolute; bottom: 0.5rem; right: 0.5rem;
     background: var(--forest); color: #fff; width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-size: 1.1rem; padding: 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   }
   .recipe-card .add-btn.added { background: var(--mustard); color: var(--ink); }
 
@@ -154,8 +162,8 @@
     font-family: 'JetBrains Mono', monospace;
     padding: 1.5rem 1rem 1.5rem;
     position: relative;
-    box-shadow: 0 1px 3px rgba(31,42,30,0.08);
-    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(27,77,62,0.07);
+    border-radius: 18px;
   }
   .receipt::before {
     content: '';
@@ -166,7 +174,7 @@
     background-repeat: repeat-x;
   }
   .receipt-header { text-align: center; margin-bottom: 0.9rem; }
-  .receipt-header .r-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.15rem; }
+  .receipt-header .r-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.15rem; color: var(--forest); }
   .receipt-header .r-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
   .receipt-divider { border-top: 1px dashed var(--line); margin: 0.6rem 0; }
 
@@ -204,29 +212,39 @@
   }
   .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 999px; }
 
-  /* Batch cards — HelloFresh-style: date header, horizontal photo strip, action button */
+  /* Batch cards — soft, stackable, with a peek carousel and a floating summary bar */
   .batch-card {
-    background: var(--card); border-radius: 16px; padding: 1rem; margin-bottom: 1rem;
-    box-shadow: 0 1px 3px rgba(31,42,30,0.08);
+    background: var(--card); border-radius: 22px; padding: 1.1rem; margin-bottom: 1.1rem;
+    box-shadow: 0 6px 20px rgba(27,77,62,0.1);
   }
-  .batch-card .batch-date-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
-  .batch-card .batch-date { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.05rem; }
+  .batch-card .batch-date-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
+  .batch-card .batch-date { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.1rem; color: #1a1a1a; }
   .batch-card .batch-meta { font-size: 0.78rem; color: var(--muted); }
-  .photo-strip { display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.3rem; margin-bottom: 0.8rem; }
-  .photo-strip .strip-item { flex-shrink: 0; width: 84px; text-align: center; cursor: pointer; }
+  .photo-strip { display: flex; gap: 0.7rem; overflow-x: auto; padding-bottom: 0.3rem; margin-bottom: 0.9rem; scroll-snap-type: x proximity; }
+  .photo-strip .strip-item { flex-shrink: 0; width: 88px; text-align: center; cursor: pointer; scroll-snap-align: start; }
   .photo-strip .strip-item img, .photo-strip .strip-item .strip-placeholder {
-    width: 84px; height: 84px; border-radius: 14px; object-fit: cover;
+    width: 88px; height: 88px; border-radius: 20px; object-fit: cover;
     background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
-    display: flex; align-items: center; justify-content: center; color: #C9D9C5; font-size: 1.6rem;
+    display: flex; align-items: center; justify-content: center; color: #B9CFC6; font-size: 1.6rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
   }
-  .photo-strip .strip-item .strip-name { font-size: 0.68rem; margin-top: 0.3rem; line-height: 1.2; }
-  .badge { font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
-  .badge-planning { background: #FCEFD1; color: #8A6416; }
-  .badge-ordered { background: #DCE9DC; color: var(--forest); }
+  .photo-strip .strip-item .strip-name { font-size: 0.68rem; margin-top: 0.35rem; line-height: 1.2; }
+  .badge { font-size: 0.68rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .badge-planning { background: #FBE3C6; color: #9A5B15; }
+  .badge-ordered { background: #D6EAE1; color: var(--forest); }
+
+  /* Floating summary bar replacing the plain "View batch" button */
+  .batch-summary-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--paper); border-radius: 16px; padding: 0.8rem 1rem; cursor: pointer;
+  }
+  .batch-summary-bar:active { background: var(--line); }
+  .batch-summary-bar .summary-text { font-size: 0.85rem; font-weight: 700; color: var(--forest); font-family: 'Nunito', sans-serif; }
+  .batch-summary-bar .summary-chevron { color: var(--forest); font-size: 1.1rem; }
 
   .instructions-recipe { margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--line); }
   .instructions-recipe:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .instructions-recipe h3 { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800; margin: 0 0 0.5rem; }
+  .instructions-recipe h3 { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800; margin: 0 0 0.5rem; color: var(--forest); }
   .instructions-recipe .ing-list { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.6rem; }
   .instructions-recipe ol { padding-left: 1.1rem; font-size: 0.88rem; line-height: 1.5; }
   .instructions-recipe ol li { margin-bottom: 0.5rem; }
@@ -238,27 +256,52 @@
   }
   .overlay.active { display: block; }
   .overlay-header { background: var(--forest); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
-  .overlay-header .back-link { color: #C9D9C5; margin-bottom: 0; }
+  .overlay-header .back-link { color: #B9CFC6; margin-bottom: 0; }
   .overlay-content { padding: 1rem; max-width: 640px; margin: 0 auto; padding-bottom: 5rem; }
-  .overlay-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 16px; margin-bottom: 1rem; }
-  .overlay-img-placeholder {
-    width: 100%; aspect-ratio: 16/9; border-radius: 16px; margin-bottom: 1rem;
-    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
-    display: flex; align-items: center; justify-content: center;
-    color: #C9D9C5; font-size: 2.4rem;
-  }
-  .overlay-title { font-family: 'Nunito', sans-serif; font-size: 1.3rem; font-weight: 800; margin: 0 0 0.4rem; }
-  .overlay-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
-  .nickname-row { margin-bottom: 1rem; }
-  .nickname-row label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 0.25rem; }
-  .scale-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
-  .scale-row label { font-size: 0.85rem; color: var(--muted); }
-  .scale-row input { width: 70px; }
-  .overlay-ing-list { font-size: 0.9rem; padding-left: 1.1rem; margin-bottom: 1.2rem; }
-  .overlay-ing-list li { margin-bottom: 0.3rem; }
-  .overlay-ing-list .qty { font-weight: 600; color: var(--forest); font-family: 'JetBrains Mono', monospace; }
 
-  /* Fixed bottom bar for the picker's "Review recipes" button */
+  /* Recipe detail: full-bleed hero image with a floating back arrow, no green bar */
+  .hero-wrap { position: relative; margin: -1rem -1rem 0; }
+  .hero-img { width: 100%; height: 42vh; min-height: 240px; object-fit: cover; display: block; }
+  .hero-img-placeholder {
+    width: 100%; height: 42vh; min-height: 240px;
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
+    display: flex; align-items: center; justify-content: center; color: #B9CFC6; font-size: 3rem;
+  }
+  .hero-back-btn {
+    position: absolute; top: 1rem; left: 1rem;
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.92);
+    display: flex; align-items: center; justify-content: center; color: var(--ink);
+    font-size: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; padding: 0; border: none;
+  }
+  .hero-card {
+    background: var(--card); border-radius: 24px 24px 0 0; margin-top: -24px; position: relative;
+    padding: 1.4rem 1rem 1rem; box-shadow: 0 -6px 20px rgba(0,0,0,0.04);
+  }
+  .overlay-title { font-family: 'Nunito', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 0 0 0.5rem; color: #1a1a1a; }
+  .info-row { display: flex; gap: 1.1rem; font-size: 0.82rem; color: var(--muted); margin-bottom: 1.2rem; }
+  .info-row span { display: flex; align-items: center; gap: 0.3rem; }
+
+  .nickname-row { margin-bottom: 1.2rem; }
+  .nickname-row label { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .nickname-input {
+    border: none !important; border-bottom: 2px solid var(--line) !important; border-radius: 0 !important;
+    background: transparent !important; padding: 0.3rem 0 !important; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1.05rem;
+  }
+  .nickname-input:focus { border-bottom-color: var(--forest) !important; outline: none !important; }
+
+  .scale-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
+  .scale-row label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+
+  .overlay-ing-list { margin-bottom: 1.4rem; }
+  .ing-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+  .ing-row:last-child { border-bottom: none; }
+  .ing-row .ing-icon {
+    width: 32px; height: 32px; border-radius: 10px; background: var(--paper);
+    display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;
+  }
+  .ing-row .ing-text { flex: 1; font-size: 0.9rem; }
+  .ing-row .qty { font-weight: 700; color: var(--forest); font-family: 'JetBrains Mono', monospace; }
+
   .sticky-bottom-bar {
     position: fixed; bottom: 0; left: 0; right: 0; background: var(--paper);
     padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom));
@@ -266,15 +309,15 @@
   }
   .sticky-bottom-bar .inner { max-width: 640px; margin: 0 auto; }
 
-  .stepper { display: flex; align-items: center; gap: 0.5rem; }
-  .stepper button { width: 32px; height: 32px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.1rem; line-height: 1; }
-  .stepper .val { min-width: 24px; text-align: center; font-weight: 700; }
+  .stepper { display: flex; align-items: center; gap: 0.7rem; }
+  .stepper button { width: 36px; height: 36px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.2rem; line-height: 1; }
+  .stepper .val { min-width: 28px; text-align: center; font-weight: 800; font-size: 1.05rem; }
 
   .review-item { display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
   .review-item img, .review-item .thumb-sm-placeholder2 {
-    width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+    width: 56px; height: 56px; border-radius: 16px; object-fit: cover; flex-shrink: 0;
     background: linear-gradient(135deg, var(--forest) 0%, var(--forest-dark) 100%);
-    display: flex; align-items: center; justify-content: center; color: #C9D9C5; font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center; color: #B9CFC6; font-size: 1.2rem;
   }
   .review-item .review-info { flex: 1; }
   .review-item .remove-x { background: none; border: none; color: var(--muted); font-size: 1.3rem; padding: 0.2rem 0.4rem; }
@@ -365,12 +408,9 @@
 
 </main>
 
-<!-- Recipe detail overlay -->
+<!-- Recipe detail overlay: full-bleed hero image, no green header bar -->
 <div class="overlay" id="recipeOverlay">
-  <div class="overlay-header">
-    <span class="back-link" onclick="closeRecipeDetail()">&larr; Back</span>
-  </div>
-  <div class="overlay-content" id="recipeOverlayContent"></div>
+  <div class="overlay-content" id="recipeOverlayContent" style="padding:0; max-width:640px; margin:0 auto; padding-bottom:5rem;"></div>
 </div>
 
 <!-- Picker + Review overlay (used for both "new batch" and "add to existing batch") -->
@@ -390,14 +430,15 @@ let recipes = [];
 let batches = [];
 let selectedShoppingBatchId = null;
 let currentRecipeDetail = null;
+let recipeDetailReturnTo = null; // 'grid' | 'batch:<id>' — where the back arrow should go
 let lastShoppingListData = null;
 let defaultServings = 2;
 
 // Picker/review state
-let pickerMode = null;       // 'new' | 'existing'
-let pickerBatchId = null;    // batchId when mode === 'existing'
-let pickerScreen = 'grid';   // 'grid' | 'review'
-let pendingSelections = new Map(); // recipeId -> servings
+let pickerMode = null;
+let pickerBatchId = null;
+let pickerScreen = 'grid';
+let pendingSelections = new Map();
 
 // ---------- Helpers ----------
 
@@ -424,6 +465,34 @@ function thumbHtml(recipe, sizeClass) {
   return recipe.image_url
     ? `<img class="${sizeClass}" src="${escapeHtml(recipe.image_url)}" alt="">`
     : `<div class="${sizeClass}-placeholder">🍽️</div>`;
+}
+
+// Same keyword categoriser as the server (api/weekly-plan-shopping-list.js),
+// duplicated client-side so the recipe detail view can show an icon per
+// ingredient without an extra API round-trip. Icon is per-CATEGORY, not
+// per-ingredient — a literal icon for every possible ingredient isn't
+// realistically buildable, but category-level icons give the same visual
+// payoff and reuse a system that's already in place for the shopping list.
+const CATEGORY_ICONS = {
+  'Fruit & Veg': '🥦', 'Meat & Fish': '🍗', 'Dairy & Eggs': '🧀',
+  'Bakery': '🍞', 'Frozen': '🧊', 'Store Cupboard': '🥫',
+  'Herbs & Spices': '🌿', 'Other': '🍽️'
+};
+const CATEGORY_KEYWORDS = [
+  ['Herbs & Spices', ['salt', 'black pepper', 'ground pepper', 'peppercorn', 'cumin', 'paprika', 'cinnamon', 'oregano', 'thyme', 'rosemary', 'bay leaf', 'chilli flake', 'chili flake', 'nutmeg', 'cardamom', 'turmeric', 'coriander seed', 'cayenne', 'garam masala', 'mixed spice', 'vanilla extract', 'basil', 'parsley', 'mint', 'dill', 'sage', 'tarragon']],
+  ['Meat & Fish', ['chicken', 'beef', 'pork', 'lamb', 'mince', 'bacon', 'sausage', 'turkey', 'fish', 'salmon', 'prawn', 'shrimp', 'cod', 'tuna', 'ham', 'chorizo', 'anchovy', 'steak']],
+  ['Dairy & Eggs', ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'yoghurt', 'egg', 'mozzarella', 'parmesan', 'feta', 'mascarpone', 'ricotta', 'buttermilk']],
+  ['Bakery', ['bread', 'bun', 'baguette', 'tortilla', 'pitta', 'pita', 'naan', 'bagel', 'croissant', 'brioche']],
+  ['Store Cupboard', ['rice', 'pasta', 'flour', 'sugar', 'olive oil', 'vegetable oil', 'sunflower oil', 'vinegar', 'tin ', 'tinned', 'canned', 'stock cube', 'stock pot', 'passata', 'ketchup', 'mustard', 'honey', 'jam', 'cereal', 'oats', 'lentil', 'chickpea', 'noodle', 'soy sauce', 'fish sauce', 'worcestershire', 'breadcrumb', 'cornflour', 'baking powder', 'baking soda', 'yeast']],
+  ['Frozen', ['frozen', 'ice cream']],
+  ['Fruit & Veg', ['onion', 'garlic', 'tomato', 'potato', 'carrot', 'pepper', 'lettuce', 'spinach', 'cucumber', 'courgette', 'aubergine', 'eggplant', 'mushroom', 'apple', 'banana', 'lemon', 'lime', 'avocado', 'broccoli', 'cauliflower', 'celery', 'ginger', 'chilli', 'chili', 'kale', 'leek', 'sweetcorn', 'corn', 'squash', 'pumpkin', 'beetroot', 'radish', 'spring onion', 'shallot', 'orange', 'berry', 'berries', 'grape', 'pear', 'peach', 'mango', 'pineapple', 'melon']]
+];
+function categoriseClient(itemName) {
+  const lower = itemName.toLowerCase();
+  for (const [category, keywords] of CATEGORY_KEYWORDS) {
+    if (keywords.some(k => lower.includes(k))) return category;
+  }
+  return 'Other';
 }
 
 // ---------- Tabs ----------
@@ -514,7 +583,7 @@ function renderRecipeGrid() {
     return;
   }
   el.innerHTML = `<div class="recipe-grid">${recipes.map(r => `
-    <div class="recipe-card" onclick="openRecipeDetail('${r.id}')">
+    <div class="recipe-card" onclick="openRecipeDetail('${r.id}', 'grid')">
       ${thumbHtml(r, 'thumb')}
       <div class="recipe-title">${escapeHtml(displayName(r))}</div>
       <div class="recipe-meta">${r.servings ? `serves ${r.servings}` : ''}${r.cook_time_minutes ? ` · ${r.cook_time_minutes} min` : ''}</div>
@@ -556,10 +625,11 @@ async function importRecipe() {
   }
 }
 
-async function openRecipeDetail(id) {
+async function openRecipeDetail(id, returnTo) {
   const res = await fetch(`${API}/api/recipe?id=${id}`);
   const recipe = await res.json();
   currentRecipeDetail = recipe;
+  recipeDetailReturnTo = returnTo;
   renderRecipeDetail(recipe.servings || defaultServings);
   document.getElementById('recipeOverlay').classList.add('active');
 }
@@ -581,6 +651,12 @@ async function saveNickname() {
   loadRecipes();
 }
 
+function adjustDetailServings(delta) {
+  const el = document.getElementById('detailServingsVal');
+  const current = parseInt(el.textContent, 10);
+  renderRecipeDetail(Math.max(1, current + delta));
+}
+
 function renderRecipeDetail(targetServings) {
   const r = currentRecipeDetail;
   const original = r.servings;
@@ -588,26 +664,47 @@ function renderRecipeDetail(targetServings) {
 
   const ingredientsHtml = r.ingredients.map(ing => {
     const scaledQty = ing.quantity !== null ? Math.round(ing.quantity * scale * 100) / 100 : null;
-    return `<li>${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}</li>`;
+    const icon = CATEGORY_ICONS[categoriseClient(ing.item)];
+    return `
+      <div class="ing-row">
+        <div class="ing-icon">${icon}</div>
+        <div class="ing-text">
+          ${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}
+        </div>
+      </div>
+    `;
   }).join('');
 
   document.getElementById('recipeOverlayContent').innerHTML = `
-    ${r.image_url ? `<img class="overlay-img" src="${escapeHtml(r.image_url)}" alt="">` : `<div class="overlay-img-placeholder">🍽️</div>`}
-    <div class="overlay-title">${escapeHtml(displayName(r))}</div>
-    <div class="overlay-meta">${r.cook_time_minutes ? `${r.cook_time_minutes} min · ` : ''}${r.confidence === 'low' ? 'low-confidence import, worth double-checking' : ''}</div>
-
-    <div class="nickname-row">
-      <label>Nickname (shortens it everywhere in the app)</label>
-      <input type="text" id="nicknameInput" value="${escapeHtml(r.nickname || '')}" placeholder="${escapeHtml(r.title)}" onchange="saveNickname()">
+    <div class="hero-wrap">
+      ${r.image_url ? `<img class="hero-img" src="${escapeHtml(r.image_url)}" alt="">` : `<div class="hero-img-placeholder">🍽️</div>`}
+      <button class="hero-back-btn" onclick="closeRecipeDetail()">&larr;</button>
     </div>
+    <div class="hero-card">
+      <div class="overlay-title">${escapeHtml(displayName(r))}</div>
+      <div class="info-row">
+        ${r.cook_time_minutes ? `<span>⏱ ${r.cook_time_minutes} min</span>` : ''}
+        ${r.confidence === 'low' ? '<span>⚠️ worth double-checking</span>' : ''}
+      </div>
 
-    <div class="scale-row">
-      <label>Servings</label>
-      <input type="number" id="scaleServings" value="${targetServings}" min="1" onchange="renderRecipeDetail(parseInt(this.value,10) || 1)">
-      ${!original ? '<span class="empty" style="font-size:0.75rem;">(original servings unknown — showing as-scraped)</span>' : ''}
+      <div class="nickname-row">
+        <label>Nickname</label>
+        <input type="text" class="nickname-input" id="nicknameInput" value="${escapeHtml(r.nickname || '')}" placeholder="${escapeHtml(r.title)}" onchange="saveNickname()">
+      </div>
+
+      <div class="scale-row">
+        <label>Servings</label>
+        <div class="stepper">
+          <button onclick="adjustDetailServings(-1)">&minus;</button>
+          <span class="val" id="detailServingsVal">${targetServings}</span>
+          <button onclick="adjustDetailServings(1)">+</button>
+        </div>
+      </div>
+      ${!original ? '<p class="empty" style="margin-top:-0.8rem; margin-bottom:1rem;">(original servings unknown — showing as-scraped)</p>' : ''}
+
+      <div class="overlay-ing-list">${ingredientsHtml}</div>
+      ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
     </div>
-    <ul class="overlay-ing-list">${ingredientsHtml}</ul>
-    ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
   `;
 }
 
@@ -749,7 +846,6 @@ async function commitPickerSelections() {
 async function loadBatches() {
   const res = await fetch(`${API}/api/weekly-plans`);
   batches = await res.json();
-  // Oldest first (top), newest last (bottom)
   batches.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 }
 
@@ -765,16 +861,17 @@ function renderBatchList() {
       <div class="batch-date-row">
         <div>
           <div class="batch-date">${formatBatchDate(b.week_start_date)}</div>
-          <div class="batch-meta">serves ${b.servings_target}</div>
         </div>
         <span class="badge badge-${b.status}">${b.status}</span>
       </div>
       <div id="batch-strip-${b.id}"><span class="empty">Loading meals…</span></div>
-      <button class="btn-secondary btn-full btn-sm" onclick="openBatchDetail('${b.id}')">View batch</button>
+      <div class="batch-summary-bar" onclick="openBatchDetail('${b.id}')">
+        <span class="summary-text" id="batch-summary-${b.id}">serves ${b.servings_target}</span>
+        <span class="summary-chevron">&rarr;</span>
+      </div>
     </div>
   `).join('');
 
-  // Fetch each batch's recipes for the photo strip (lightweight, only IDs+images needed)
   batches.forEach(b => loadBatchStrip(b.id));
 }
 
@@ -782,7 +879,14 @@ async function loadBatchStrip(batchId) {
   const res = await fetch(`${API}/api/weekly-plan?id=${batchId}`);
   const batch = await res.json();
   const el = document.getElementById(`batch-strip-${batchId}`);
+  const summaryEl = document.getElementById(`batch-summary-${batchId}`);
   if (!el) return;
+
+  if (summaryEl) {
+    summaryEl.textContent = batch.recipes.length
+      ? `${batch.recipes.length} meal${batch.recipes.length === 1 ? '' : 's'} · serves ${batch.servings_target}`
+      : `serves ${batch.servings_target}`;
+  }
 
   if (!batch.recipes.length) {
     el.innerHTML = '<p class="empty">No meals chosen this week</p>';
@@ -790,7 +894,7 @@ async function loadBatchStrip(batchId) {
   }
 
   el.innerHTML = `<div class="photo-strip">${batch.recipes.map(r => `
-    <div class="strip-item" onclick="openBatchDetail('${batchId}')">
+    <div class="strip-item" onclick="openRecipeDetail('${r.id}', 'batch:${batchId}')">
       ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="">` : `<div class="strip-placeholder">🍽️</div>`}
       <div class="strip-name">${escapeHtml(displayName(r))}</div>
     </div>
@@ -807,14 +911,14 @@ async function openBatchDetail(batchId) {
 
   const recipeRows = batch.recipes.map(r => `
     <div class="recipe-item">
-      <div onclick="openRecipeDetailFromBatch('${r.id}')" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
+      <div onclick="openRecipeDetail('${r.id}', 'batch:${batch.id}')" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
         ${thumbHtml(r, 'thumb-sm')}
         <div>
           <div class="recipe-title">${escapeHtml(displayName(r))}</div>
           <div class="recipe-meta">${r.servingsOverride ? `serves ${r.servingsOverride}` : ''}</div>
         </div>
       </div>
-      <button class="btn-danger btn-sm" onclick="deleteRecipeFromBatch('${batch.id}', '${r.id}', '${batch.status}')">Remove</button>
+      <button class="icon-btn" onclick="deleteRecipeFromBatch('${batch.id}', '${r.id}', '${batch.status}')" title="Remove">🗑️</button>
     </div>
   `).join('') || '<p class="empty">No meals in this batch yet.</p>';
 
@@ -827,10 +931,6 @@ async function openBatchDetail(batchId) {
       <button class="btn-secondary btn-full" onclick="switchTab('shopping'); selectShoppingBatch('${batch.id}')">View shopping list</button>
     `}
   `;
-}
-
-function openRecipeDetailFromBatch(recipeId) {
-  openRecipeDetail(recipeId);
 }
 
 async function deleteRecipeFromBatch(batchId, recipeId, batchStatus) {
