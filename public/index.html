@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B4D3E">
 <title>meal-planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -20,6 +21,7 @@
     --card: #FFFFFF;
   }
   * { box-sizing: border-box; }
+  html, body { overscroll-behavior-y: none; }
   body {
     margin: 0;
     background: var(--paper);
@@ -252,7 +254,7 @@
 
   .overlay {
     display: none; position: fixed; inset: 0; background: var(--paper);
-    z-index: 20; overflow-y: auto;
+    z-index: 20; overflow-y: auto; overscroll-behavior-y: contain;
   }
   .overlay.active { display: block; }
   .overlay-header { background: var(--forest); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
@@ -309,9 +311,21 @@
   }
   .sticky-bottom-bar .inner { max-width: 640px; margin: 0 auto; }
 
-  .stepper { display: flex; align-items: center; gap: 0.7rem; }
-  .stepper button { width: 36px; height: 36px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.2rem; line-height: 1; }
-  .stepper .val { min-width: 28px; text-align: center; font-weight: 800; font-size: 1.05rem; }
+  /* Old round-button stepper — kept for the picker/review screen where space
+     is tighter and rows are already busy with a thumbnail + remove button */
+  .stepper { display: flex; align-items: center; gap: 0.5rem; }
+  .stepper button { width: 32px; height: 32px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.1rem; line-height: 1; }
+  .stepper .val { min-width: 24px; text-align: center; font-weight: 700; }
+
+  /* New connected pill stepper for the recipe detail screen — "+ | 2 | -" */
+  .stepper-pill { display: inline-flex; align-items: center; background: var(--forest); border-radius: 999px; overflow: hidden; }
+  .stepper-pill button {
+    background: transparent; color: #fff; border: none; width: 34px; height: 34px;
+    font-size: 1rem; font-weight: 700; padding: 0; border-radius: 0;
+  }
+  .stepper-pill button:first-child { border-right: 1px solid rgba(255,255,255,0.25); }
+  .stepper-pill button:last-child { border-left: 1px solid rgba(255,255,255,0.25); }
+  .stepper-pill .val { color: #fff; font-weight: 800; font-size: 0.88rem; padding: 0 0.7rem; min-width: 20px; text-align: center; }
 
   .review-item { display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
   .review-item img, .review-item .thumb-sm-placeholder2 {
@@ -326,7 +340,7 @@
 <body>
 
 <header>
-  <h1>meal-planner</h1>
+  <h1 id="appTitleHeader">meal-planner</h1>
 </header>
 
 <div class="tabbar">
@@ -391,6 +405,11 @@
   <!-- SETTINGS TAB -->
   <div id="tab-settings" class="tab-content">
     <section>
+      <h2>App</h2>
+      <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:0.3rem;">App title</label>
+      <input type="text" id="appTitleInput" placeholder="meal-planner" onchange="saveAppTitle()">
+    </section>
+    <section>
       <h2>Defaults</h2>
       <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:0.3rem;">Default servings</label>
       <input type="number" id="defaultServingsInput" min="1" onchange="saveDefaultServings()">
@@ -430,11 +449,10 @@ let recipes = [];
 let batches = [];
 let selectedShoppingBatchId = null;
 let currentRecipeDetail = null;
-let recipeDetailReturnTo = null; // 'grid' | 'batch:<id>' — where the back arrow should go
+let recipeDetailReturnTo = null;
 let lastShoppingListData = null;
 let defaultServings = 2;
 
-// Picker/review state
 let pickerMode = null;
 let pickerBatchId = null;
 let pickerScreen = 'grid';
@@ -467,12 +485,6 @@ function thumbHtml(recipe, sizeClass) {
     : `<div class="${sizeClass}-placeholder">🍽️</div>`;
 }
 
-// Same keyword categoriser as the server (api/weekly-plan-shopping-list.js),
-// duplicated client-side so the recipe detail view can show an icon per
-// ingredient without an extra API round-trip. Icon is per-CATEGORY, not
-// per-ingredient — a literal icon for every possible ingredient isn't
-// realistically buildable, but category-level icons give the same visual
-// payoff and reuse a system that's already in place for the shopping list.
 const CATEGORY_ICONS = {
   'Fruit & Veg': '🥦', 'Meat & Fish': '🍗', 'Dairy & Eggs': '🧀',
   'Bakery': '🍞', 'Frozen': '🧊', 'Store Cupboard': '🥫',
@@ -511,6 +523,11 @@ async function loadSettings() {
   const settings = await res.json();
   defaultServings = parseInt(settings.default_servings, 10) || 2;
   document.getElementById('defaultServingsInput').value = defaultServings;
+
+  const appTitle = settings.app_title && settings.app_title.trim() ? settings.app_title : 'meal-planner';
+  document.getElementById('appTitleHeader').textContent = appTitle;
+  document.getElementById('appTitleInput').value = settings.app_title || '';
+  document.title = appTitle;
 }
 
 async function saveDefaultServings() {
@@ -520,6 +537,18 @@ async function saveDefaultServings() {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key: 'default_servings', value: val })
+  });
+}
+
+async function saveAppTitle() {
+  const val = document.getElementById('appTitleInput').value.trim();
+  const displayVal = val || 'meal-planner';
+  document.getElementById('appTitleHeader').textContent = displayVal;
+  document.title = displayVal;
+  await fetch(`${API}/api/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'app_title', value: val })
   });
 }
 
@@ -630,8 +659,9 @@ async function openRecipeDetail(id, returnTo) {
   const recipe = await res.json();
   currentRecipeDetail = recipe;
   recipeDetailReturnTo = returnTo;
-  renderRecipeDetail(recipe.servings || defaultServings);
+  renderRecipeDetailShell(recipe.servings || defaultServings);
   document.getElementById('recipeOverlay').classList.add('active');
+  document.getElementById('recipeOverlay').scrollTop = 0;
 }
 
 function closeRecipeDetail() {
@@ -651,18 +681,16 @@ async function saveNickname() {
   loadRecipes();
 }
 
-function adjustDetailServings(delta) {
-  const el = document.getElementById('detailServingsVal');
-  const current = parseInt(el.textContent, 10);
-  renderRecipeDetail(Math.max(1, current + delta));
-}
-
-function renderRecipeDetail(targetServings) {
+// Builds only the ingredients list HTML for a given target servings — kept
+// separate from the full shell so adjusting the stepper never rebuilds the
+// hero image/title/nickname field, which was causing the whole page to
+// visually jump/reset scroll position on every tap.
+function buildIngredientsHtml(targetServings) {
   const r = currentRecipeDetail;
   const original = r.servings;
   const scale = original ? targetServings / original : 1;
 
-  const ingredientsHtml = r.ingredients.map(ing => {
+  return r.ingredients.map(ing => {
     const scaledQty = ing.quantity !== null ? Math.round(ing.quantity * scale * 100) / 100 : null;
     const icon = CATEGORY_ICONS[categoriseClient(ing.item)];
     return `
@@ -674,6 +702,19 @@ function renderRecipeDetail(targetServings) {
       </div>
     `;
   }).join('');
+}
+
+function adjustDetailServings(delta) {
+  const el = document.getElementById('detailServingsVal');
+  const newVal = Math.max(1, parseInt(el.textContent, 10) + delta);
+  el.textContent = newVal;
+  document.getElementById('ingredientsListContainer').innerHTML = buildIngredientsHtml(newVal);
+}
+
+// Builds the whole screen once (hero image, title, nickname, stepper shell,
+// ingredients, steps) — only called when the recipe detail is first opened.
+function renderRecipeDetailShell(targetServings) {
+  const r = currentRecipeDetail;
 
   document.getElementById('recipeOverlayContent').innerHTML = `
     <div class="hero-wrap">
@@ -694,15 +735,15 @@ function renderRecipeDetail(targetServings) {
 
       <div class="scale-row">
         <label>Servings</label>
-        <div class="stepper">
-          <button onclick="adjustDetailServings(-1)">&minus;</button>
-          <span class="val" id="detailServingsVal">${targetServings}</span>
+        <div class="stepper-pill">
           <button onclick="adjustDetailServings(1)">+</button>
+          <span class="val" id="detailServingsVal">${targetServings}</span>
+          <button onclick="adjustDetailServings(-1)">&minus;</button>
         </div>
       </div>
-      ${!original ? '<p class="empty" style="margin-top:-0.8rem; margin-bottom:1rem;">(original servings unknown — showing as-scraped)</p>' : ''}
+      ${!r.servings ? '<p class="empty" style="margin-top:-0.8rem; margin-bottom:1rem;">(original servings unknown — showing as-scraped)</p>' : ''}
 
-      <div class="overlay-ing-list">${ingredientsHtml}</div>
+      <div class="overlay-ing-list" id="ingredientsListContainer">${buildIngredientsHtml(targetServings)}</div>
       ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
     </div>
   `;
