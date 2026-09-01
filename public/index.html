@@ -74,7 +74,7 @@
     color: var(--forest);
     margin: 0 0 0.75rem;
   }
-  select, input[type=text], input[type=number], input[type=url] {
+  select, input[type=text], input[type=number], input[type=url], textarea {
     width: 100%;
     padding: 0.7rem 0.85rem;
     border: 1.5px solid var(--line);
@@ -84,7 +84,8 @@
     background: var(--paper);
     color: var(--ink);
   }
-  input:focus, select:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
+  textarea { resize: vertical; min-height: 110px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
   button {
     font-family: 'Nunito', sans-serif;
     font-weight: 700;
@@ -105,6 +106,7 @@
   .status { font-size: 0.85rem; margin-top: 0.5rem; }
   .status.error { color: var(--red); }
   .status.ok { color: var(--forest); }
+  .divider-or { text-align: center; font-size: 0.75rem; color: var(--muted); margin: 0.9rem 0; text-transform: uppercase; letter-spacing: 0.05em; }
   .recipe-item {
     display: flex; align-items: center; gap: 0.6rem;
     padding: 0.55rem 0; border-bottom: 1px solid var(--line);
@@ -276,6 +278,12 @@
     display: flex; align-items: center; justify-content: center; color: var(--ink);
     font-size: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; padding: 0; border: none;
   }
+  .hero-photo-btn {
+    position: absolute; bottom: 0.9rem; right: 0.9rem;
+    background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 999px;
+    padding: 0.5rem 0.9rem; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
   .hero-card {
     background: var(--card); border-radius: 24px 24px 0 0; margin-top: -24px; position: relative;
     padding: 1.4rem 1rem 1rem; box-shadow: 0 -6px 20px rgba(0,0,0,0.04);
@@ -394,8 +402,14 @@
     <section>
       <h2>Import a recipe</h2>
       <input type="url" id="recipeUrl" placeholder="Paste a recipe URL">
-      <button class="btn-primary btn-full" onclick="importRecipe()">Import</button>
+      <button class="btn-primary btn-full" onclick="importRecipe()">Import from URL</button>
       <div id="importStatus" class="status"></div>
+
+      <div class="divider-or">or</div>
+
+      <textarea id="recipeText" placeholder="Paste a recipe here — from Gemini, ChatGPT, a text you've saved, anywhere. Include the ingredients and steps."></textarea>
+      <button class="btn-primary btn-full" onclick="importPastedText()">Import from pasted text</button>
+      <div id="pasteStatus" class="status"></div>
     </section>
     <section>
       <h2>Your recipes</h2>
@@ -443,8 +457,13 @@
   <div class="sticky-bottom-bar" id="pickerBottomBar"></div>
 </div>
 
+<!-- Hidden file input for recipe photo upload, triggered from the hero button -->
+<input type="file" id="photoFileInput" accept="image/*" style="display:none;" onchange="handlePhotoFileSelected(event)">
+
 <script>
 const API = '';
+const SUPABASE_URL = 'https://phesmbmeeblrqmviikca.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZXNtYm1lZWJscnFtdmlpa2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NTUyMjMsImV4cCI6MjEwMTMzMTIyM30.2SB3w2kjvrEw99dKx6TUVUjS-XKRyCkS0DdxmS4OWbw';
 
 let recipes = [];
 let batches = [];
@@ -655,6 +674,34 @@ async function importRecipe() {
   }
 }
 
+async function importPastedText() {
+  const textInput = document.getElementById('recipeText');
+  const status = document.getElementById('pasteStatus');
+  const text = textInput.value.trim();
+  if (!text) return;
+
+  status.textContent = 'Importing…';
+  status.className = 'status';
+
+  try {
+    const res = await fetch(`${API}/api/import-recipe-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Import failed');
+
+    status.textContent = `Saved: ${data.title}${data.confidence === 'low' ? ' (low confidence — worth checking the ingredients)' : ''}`;
+    status.className = 'status ok';
+    textInput.value = '';
+    await loadRecipes();
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status error';
+  }
+}
+
 async function openRecipeDetail(id, returnTo) {
   const res = await fetch(`${API}/api/recipe?id=${id}`);
   const recipe = await res.json();
@@ -680,6 +727,56 @@ async function saveNickname() {
   const updated = await res.json();
   currentRecipeDetail.nickname = updated.nickname;
   loadRecipes();
+}
+
+// Triggers the hidden file input from the hero photo button
+function triggerPhotoUpload() {
+  document.getElementById('photoFileInput').click();
+}
+
+// Uploads directly to Supabase Storage from the browser (same pattern the
+// wishlist app already uses) — sidesteps the fact that binary files can't
+// be pushed reliably through the code-deployment tooling used to build
+// this app; the user's own browser does the upload here instead.
+async function handlePhotoFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file || !currentRecipeDetail) return;
+
+  const btn = document.getElementById('heroPhotoBtn');
+  const originalText = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = 'Uploading…'; btn.disabled = true; }
+
+  try {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `recipes/${currentRecipeDetail.id}-${Date.now()}.${ext}`;
+
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/recipe-images/${path}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': file.type
+      },
+      body: file
+    });
+    if (!uploadRes.ok) throw new Error('Photo upload failed');
+
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/recipe-images/${path}`;
+
+    await fetch(`${API}/api/recipe?id=${currentRecipeDetail.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrl: publicUrl })
+    });
+
+    currentRecipeDetail.image_url = publicUrl;
+    renderRecipeDetailShell(parseInt(document.getElementById('detailServingsVal').textContent, 10));
+    loadRecipes(); // refresh the grid thumbnail too
+  } catch (err) {
+    alert('Photo upload failed: ' + err.message);
+  } finally {
+    event.target.value = ''; // allow re-selecting the same file later
+  }
 }
 
 // Builds only the ingredients list HTML for a given target servings — kept
@@ -713,7 +810,8 @@ function adjustDetailServings(delta) {
 }
 
 // Builds the whole screen once (hero image, title, nickname, stepper shell,
-// ingredients, steps) — only called when the recipe detail is first opened.
+// ingredients, steps) — only called when the recipe detail is first opened
+// or when the photo changes.
 function renderRecipeDetailShell(targetServings) {
   const r = currentRecipeDetail;
 
@@ -721,6 +819,7 @@ function renderRecipeDetailShell(targetServings) {
     <div class="hero-wrap">
       ${r.image_url ? `<img class="hero-img" src="${escapeHtml(r.image_url)}" alt="">` : `<div class="hero-img-placeholder">🍽️</div>`}
       <button class="hero-back-btn" onclick="closeRecipeDetail()">&larr;</button>
+      <button class="hero-photo-btn" id="heroPhotoBtn" onclick="triggerPhotoUpload()">📷 ${r.image_url ? 'Change photo' : 'Add photo'}</button>
     </div>
     <div class="hero-card">
       <div class="overlay-title">${escapeHtml(displayName(r))}</div>
