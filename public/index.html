@@ -278,8 +278,12 @@
     display: flex; align-items: center; justify-content: center; color: var(--ink);
     font-size: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; padding: 0; border: none;
   }
+  /* Moved up next to the back arrow — it was previously anchored to the
+     bottom of the image, which put it right where the white card overlaps
+     the image (the card's -24px negative margin slides up over that area),
+     so the button ended up hidden underneath the card. */
   .hero-photo-btn {
-    position: absolute; bottom: 0.9rem; right: 0.9rem;
+    position: absolute; top: 1rem; right: 1rem;
     background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 999px;
     padding: 0.5rem 0.9rem; font-size: 0.78rem; font-weight: 700; cursor: pointer;
     display: flex; align-items: center; gap: 0.4rem;
@@ -312,6 +316,14 @@
   }
   .ing-row .ing-text { flex: 1; font-size: 0.9rem; }
   .ing-row .qty { font-weight: 700; color: var(--forest); font-family: 'JetBrains Mono', monospace; }
+
+  .replace-section { border-top: 1px solid var(--line); margin-top: 1.4rem; padding-top: 1rem; }
+  .replace-section summary { font-size: 0.82rem; color: var(--forest); font-weight: 700; cursor: pointer; list-style: none; }
+  .replace-section summary::-webkit-details-marker { display: none; }
+  .replace-section summary::before { content: '▸ '; }
+  .replace-section[open] summary::before { content: '▾ '; }
+  .replace-section .replace-body { margin-top: 0.8rem; }
+  .danger-zone { border-top: 1px solid var(--line); margin-top: 1.4rem; padding-top: 1rem; }
 
   .sticky-bottom-bar {
     position: fixed; bottom: 0; left: 0; right: 0; background: var(--paper);
@@ -779,6 +791,79 @@ async function handlePhotoFileSelected(event) {
   }
 }
 
+// Re-imports (URL or pasted text) into the CURRENT recipe instead of
+// creating a new one — overwrites title/ingredients/steps/image but keeps
+// the nickname, and keeps a manually-uploaded photo if the new source has
+// no image of its own (handled server-side in updateRecipe()).
+async function replaceRecipeFromUrl() {
+  const urlInput = document.getElementById('replaceUrlInput');
+  const status = document.getElementById('replaceStatus');
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  status.textContent = 'Replacing…';
+  status.className = 'status';
+
+  try {
+    const res = await fetch(`${API}/api/scrape-recipe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, recipeId: currentRecipeDetail.id })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Replace failed');
+    if (data.needsBrowser) throw new Error("This site couldn't be scraped — try another URL or paste the text instead.");
+
+    status.textContent = 'Replaced!';
+    status.className = 'status ok';
+    await openRecipeDetail(currentRecipeDetail.id, recipeDetailReturnTo);
+    await loadRecipes();
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status error';
+  }
+}
+
+async function replaceRecipeFromText() {
+  const textInput = document.getElementById('replaceTextInput');
+  const status = document.getElementById('replaceStatus');
+  const text = textInput.value.trim();
+  if (!text) return;
+
+  status.textContent = 'Replacing…';
+  status.className = 'status';
+
+  try {
+    const res = await fetch(`${API}/api/import-recipe-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, recipeId: currentRecipeDetail.id })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Replace failed');
+
+    status.textContent = 'Replaced!';
+    status.className = 'status ok';
+    await openRecipeDetail(currentRecipeDetail.id, recipeDetailReturnTo);
+    await loadRecipes();
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status error';
+  }
+}
+
+async function deleteCurrentRecipe() {
+  const inBatch = batches.some(b => true); // batches list doesn't carry recipe membership here — keep the warning general
+  const message = 'Delete this recipe permanently? If it\'s currently in any batch, it will be removed from there too.';
+  if (!confirm(message)) return;
+
+  await fetch(`${API}/api/recipe?id=${currentRecipeDetail.id}`, { method: 'DELETE' });
+  closeRecipeDetail();
+  await loadRecipes();
+  await loadBatches();
+  switchTab('recipes');
+}
+
 // Builds only the ingredients list HTML for a given target servings — kept
 // separate from the full shell so adjusting the stepper never rebuilds the
 // hero image/title/nickname field, which was causing the whole page to
@@ -811,7 +896,7 @@ function adjustDetailServings(delta) {
 
 // Builds the whole screen once (hero image, title, nickname, stepper shell,
 // ingredients, steps) — only called when the recipe detail is first opened
-// or when the photo changes.
+// or when the photo/content changes.
 function renderRecipeDetailShell(targetServings) {
   const r = currentRecipeDetail;
 
@@ -845,6 +930,23 @@ function renderRecipeDetailShell(targetServings) {
 
       <div class="overlay-ing-list" id="ingredientsListContainer">${buildIngredientsHtml(targetServings)}</div>
       ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
+
+      <details class="replace-section">
+        <summary>Replace this recipe with a new import</summary>
+        <div class="replace-body">
+          <p class="empty" style="margin-top:0; margin-bottom:0.7rem;">Overwrites the title, ingredients, steps and (if found) the photo — keeps your nickname, and keeps a manually-uploaded photo if the new source has none.</p>
+          <input type="url" id="replaceUrlInput" placeholder="New recipe URL">
+          <button class="btn-secondary btn-full" onclick="replaceRecipeFromUrl()">Replace from URL</button>
+          <div class="divider-or">or</div>
+          <textarea id="replaceTextInput" placeholder="Paste new recipe text"></textarea>
+          <button class="btn-secondary btn-full" onclick="replaceRecipeFromText()">Replace from pasted text</button>
+          <div id="replaceStatus" class="status"></div>
+        </div>
+      </details>
+
+      <div class="danger-zone">
+        <button class="btn-danger btn-full" onclick="deleteCurrentRecipe()">🗑️ Delete this recipe</button>
+      </div>
     </div>
   `;
 }
