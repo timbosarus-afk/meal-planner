@@ -1,11 +1,14 @@
-// Vercel serverless function — POST { "url": "https://..." } to scrape a recipe
-// AND save it to Supabase in one step.
+// Vercel serverless function — POST { "url": "https://..." } to scrape a
+// recipe and save it as a NEW recipe in Supabase. Optionally pass
+// { "recipeId": "..." } to overwrite an existing recipe in place instead
+// (used by "Replace with new import" on the recipe detail page — keeps a
+// single recipe up to date rather than creating a duplicate).
 //
 // Requires env vars (set in Vercel dashboard):
 //   ANTHROPIC_API_KEY — only used for sites without JSON-LD
 //   SUPABASE_URL, SUPABASE_ANON_KEY — from the meal-planner Supabase project
 
-const { scrapeAndSaveRecipe } = require('../lib/scrape-recipe');
+const { scrapeAndSaveRecipe, scrapeAndUpdateRecipe } = require('../lib/scrape-recipe');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,7 +26,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { url } = req.body || {};
+  const { url, recipeId } = req.body || {};
 
   if (!url || typeof url !== 'string') {
     res.status(400).json({ error: 'Missing "url" in request body' });
@@ -31,7 +34,9 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const recipe = await scrapeAndSaveRecipe(url);
+    const recipe = recipeId
+      ? await scrapeAndUpdateRecipe(url, recipeId)
+      : await scrapeAndSaveRecipe(url);
     res.status(200).json(recipe);
   } catch (err) {
     console.error('Scrape failed:', err);
