@@ -2,8 +2,11 @@
 // detail: ingredients, steps, image, timings. Powers the Recipes tab's
 // detail view, including live portion scaling (done client-side using
 // the original `servings` value returned here).
-// PATCH ?id=<recipeId> with { nickname } sets a short display name that
-// replaces the long scraped title everywhere in the UI.
+// PATCH ?id=<recipeId> with { nickname } and/or { imageUrl } updates the
+// short display name and/or the photo — imageUrl is set after a direct
+// upload to Supabase Storage (see the recipe-images bucket) rather than
+// a scraped URL, so you can attach your own photo to a manually-imported
+// or pasted recipe.
 
 const { supabase } = require('../lib/db');
 
@@ -43,10 +46,14 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'PATCH') {
-    const { nickname } = req.body || {};
+    const { nickname, imageUrl } = req.body || {};
+    const updates = {};
+    if (nickname !== undefined) updates.nickname = nickname ? nickname.trim() : null;
+    if (imageUrl !== undefined) updates.image_url = imageUrl;
+
     const { data, error } = await supabase
       .from('recipes')
-      .update({ nickname: nickname ? nickname.trim() : null })
+      .update(updates)
       .eq('id', id)
       .select()
       .single();
