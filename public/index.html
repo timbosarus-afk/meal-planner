@@ -217,10 +217,12 @@
   }
   .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 999px; }
 
-  /* Batch cards — soft, stackable, with a peek carousel and a floating summary bar */
+  /* Batch cards — soft, stackable, with a peek carousel and a floating summary bar.
+     The whole card is tappable to open the batch, except the photo-strip
+     thumbnails, which stop propagation so they open the recipe instead. */
   .batch-card {
     background: var(--card); border-radius: 22px; padding: 1.1rem; margin-bottom: 1.1rem;
-    box-shadow: 0 6px 20px rgba(27,77,62,0.1);
+    box-shadow: 0 6px 20px rgba(27,77,62,0.1); cursor: pointer;
   }
   .batch-card .batch-date-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
   .batch-card .batch-date { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.1rem; color: #1a1a1a; }
@@ -241,9 +243,8 @@
   /* Floating summary bar replacing the plain "View batch" button */
   .batch-summary-bar {
     display: flex; justify-content: space-between; align-items: center;
-    background: var(--paper); border-radius: 16px; padding: 0.8rem 1rem; cursor: pointer;
+    background: var(--paper); border-radius: 16px; padding: 0.8rem 1rem;
   }
-  .batch-summary-bar:active { background: var(--line); }
   .batch-summary-bar .summary-text { font-size: 0.85rem; font-weight: 700; color: var(--forest); font-family: 'Nunito', sans-serif; }
   .batch-summary-bar .summary-chevron { color: var(--forest); font-size: 1.1rem; }
 
@@ -278,10 +279,6 @@
     display: flex; align-items: center; justify-content: center; color: var(--ink);
     font-size: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; padding: 0; border: none;
   }
-  /* Moved up next to the back arrow — it was previously anchored to the
-     bottom of the image, which put it right where the white card overlaps
-     the image (the card's -24px negative margin slides up over that area),
-     so the button ended up hidden underneath the card. */
   .hero-photo-btn {
     position: absolute; top: 1rem; right: 1rem;
     background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 999px;
@@ -332,13 +329,13 @@
   }
   .sticky-bottom-bar .inner { max-width: 640px; margin: 0 auto; }
 
-  /* Old round-button stepper — kept for the picker/review screen where space
-     is tighter and rows are already busy with a thumbnail + remove button */
-  .stepper { display: flex; align-items: center; gap: 0.5rem; }
+  /* Round-button stepper — used in the picker/review screen, and now also
+     for per-recipe servings within a batch (batch detail list). */
+  .stepper { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
   .stepper button { width: 32px; height: 32px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.1rem; line-height: 1; }
-  .stepper .val { min-width: 24px; text-align: center; font-weight: 700; }
+  .stepper .val { min-width: 20px; text-align: center; font-weight: 700; }
 
-  /* New connected pill stepper for the recipe detail screen — "+ | 2 | -" */
+  /* Connected pill stepper for the recipe detail screen — "+ | 2 | -" */
   .stepper-pill { display: inline-flex; align-items: center; background: var(--forest); border-radius: 999px; overflow: hidden; }
   .stepper-pill button {
     background: transparent; color: #fff; border: none; width: 34px; height: 34px;
@@ -853,7 +850,6 @@ async function replaceRecipeFromText() {
 }
 
 async function deleteCurrentRecipe() {
-  const inBatch = batches.some(b => true); // batches list doesn't carry recipe membership here — keep the warning general
   const message = 'Delete this recipe permanently? If it\'s currently in any batch, it will be removed from there too.';
   if (!confirm(message)) return;
 
@@ -1099,8 +1095,10 @@ function renderBatchList() {
     return;
   }
 
+  // Whole card is tappable (openBatchDetail); the photo-strip thumbnails
+  // stop propagation so tapping a photo opens the recipe instead.
   el.innerHTML = batches.map(b => `
-    <div class="batch-card">
+    <div class="batch-card" onclick="openBatchDetail('${b.id}')">
       <div class="batch-date-row">
         <div>
           <div class="batch-date">${formatBatchDate(b.week_start_date)}</div>
@@ -1108,7 +1106,7 @@ function renderBatchList() {
         <span class="badge badge-${b.status}">${b.status}</span>
       </div>
       <div id="batch-strip-${b.id}"><span class="empty">Loading meals…</span></div>
-      <div class="batch-summary-bar" onclick="openBatchDetail('${b.id}')">
+      <div class="batch-summary-bar">
         <span class="summary-text" id="batch-summary-${b.id}">serves ${b.servings_target}</span>
         <span class="summary-chevron">&rarr;</span>
       </div>
@@ -1137,7 +1135,7 @@ async function loadBatchStrip(batchId) {
   }
 
   el.innerHTML = `<div class="photo-strip">${batch.recipes.map(r => `
-    <div class="strip-item" onclick="openRecipeDetail('${r.id}', 'batch:${batchId}')">
+    <div class="strip-item" onclick="event.stopPropagation(); openRecipeDetail('${r.id}', 'batch:${batchId}')">
       ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="">` : `<div class="strip-placeholder">🍽️</div>`}
       <div class="strip-name">${escapeHtml(displayName(r))}</div>
     </div>
@@ -1152,18 +1150,23 @@ async function openBatchDetail(batchId) {
   document.getElementById('batchDetailSection').style.display = 'block';
   document.getElementById('batchDetailTitle').innerHTML = `${formatBatchDate(batch.week_start_date)} <span class="badge badge-${batch.status}">${batch.status}</span>`;
 
-  const recipeRows = batch.recipes.map(r => `
+  const recipeRows = batch.recipes.map(r => {
+    const currentServings = r.servingsOverride || batch.servings_target;
+    return `
     <div class="recipe-item">
-      <div onclick="openRecipeDetail('${r.id}', 'batch:${batch.id}')" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
+      <div onclick="openRecipeDetail('${r.id}', 'batch:${batch.id}')" style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0; cursor:pointer;">
         ${thumbHtml(r, 'thumb-sm')}
-        <div>
-          <div class="recipe-title">${escapeHtml(displayName(r))}</div>
-          <div class="recipe-meta">${r.servingsOverride ? `serves ${r.servingsOverride}` : ''}</div>
-        </div>
+        <div class="recipe-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(displayName(r))}</div>
+      </div>
+      <div class="stepper">
+        <button onclick="adjustBatchRecipeServings('${batch.id}', '${r.id}', -1)">&minus;</button>
+        <span class="val" id="batch-serv-${r.id}">${currentServings}</span>
+        <button onclick="adjustBatchRecipeServings('${batch.id}', '${r.id}', 1)">+</button>
       </div>
       <button class="icon-btn" onclick="deleteRecipeFromBatch('${batch.id}', '${r.id}', '${batch.status}')" title="Remove">🗑️</button>
     </div>
-  `).join('') || '<p class="empty">No meals in this batch yet.</p>';
+  `;
+  }).join('') || '<p class="empty">No meals in this batch yet.</p>';
 
   document.getElementById('batchDetailContent').innerHTML = `
     ${recipeRows}
@@ -1174,6 +1177,23 @@ async function openBatchDetail(batchId) {
       <button class="btn-secondary btn-full" onclick="switchTab('shopping'); selectShoppingBatch('${batch.id}')">View shopping list</button>
     `}
   `;
+}
+
+// Adjusts one recipe's servings within a batch (not the recipe's own
+// default servings, and not the batch-wide default) — this is what the
+// shopping list actually scales ingredient quantities by for that recipe.
+// Reads the current value live from the DOM rather than a value baked into
+// the button's onclick, so rapid +/- taps always work from the latest number.
+async function adjustBatchRecipeServings(batchId, recipeId, delta) {
+  const valEl = document.getElementById(`batch-serv-${recipeId}`);
+  const newVal = Math.max(1, parseInt(valEl.textContent, 10) + delta);
+  valEl.textContent = newVal;
+
+  await fetch(`${API}/api/weekly-plan?id=${batchId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeId, servingsOverride: newVal })
+  });
 }
 
 async function deleteRecipeFromBatch(batchId, recipeId, batchStatus) {
@@ -1209,7 +1229,7 @@ function renderShoppingChooser() {
   }
 
   el.innerHTML = planning.map(b => `
-    <div class="batch-card" onclick="selectShoppingBatch('${b.id}')" style="cursor:pointer;">
+    <div class="batch-card" onclick="selectShoppingBatch('${b.id}')">
       <div class="batch-date">${formatBatchDate(b.week_start_date)}</div>
       <div class="batch-meta">serves ${b.servings_target}</div>
     </div>
