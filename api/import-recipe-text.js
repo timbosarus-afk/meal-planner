@@ -3,8 +3,10 @@
 // copied from anywhere) instead of scraping a URL. Genuinely lighter and
 // faster than URL scraping since there's no page bloat (nav, reviews,
 // related-recipe upsells) to wade through — just the recipe itself.
+// Optionally pass { "recipeId": "..." } to overwrite an existing recipe in
+// place instead of creating a new one.
 
-const { importPastedRecipe } = require('../lib/scrape-recipe');
+const { importPastedRecipe, updatePastedRecipe } = require('../lib/scrape-recipe');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,14 +20,16 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Use POST with a JSON body: { "text": "..." }' }); return; }
 
-  const { text } = req.body || {};
+  const { text, recipeId } = req.body || {};
   if (!text || typeof text !== 'string') {
     res.status(400).json({ error: 'Missing "text" in request body' });
     return;
   }
 
   try {
-    const recipe = await importPastedRecipe(text);
+    const recipe = recipeId
+      ? await updatePastedRecipe(text, recipeId)
+      : await importPastedRecipe(text);
     res.status(200).json(recipe);
   } catch (err) {
     console.error('Pasted recipe import failed:', err);
