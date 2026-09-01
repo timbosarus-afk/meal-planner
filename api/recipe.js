@@ -7,12 +7,16 @@
 // upload to Supabase Storage (see the recipe-images bucket) rather than
 // a scraped URL, so you can attach your own photo to a manually-imported
 // or pasted recipe.
+// DELETE ?id=<recipeId> removes the recipe entirely — also removes it from
+// any batches it's currently sitting in (the frontend is responsible for
+// warning about this before calling, since it's the same recipe row either
+// way and there's no separate "in use" check needed here).
 
 const { supabase } = require('../lib/db');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -63,5 +67,23 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(405).json({ error: 'Use GET or PATCH' });
+  if (req.method === 'DELETE') {
+    try {
+      // Remove from any batches first (FK would otherwise block deleting
+      // the recipe while it's still referenced), then its ingredients,
+      // then the recipe itself.
+      await supabase.from('weekly_plan_recipes').delete().eq('recipe_id', id);
+      await supabase.from('recipe_ingredients').delete().eq('recipe_id', id);
+      const { error } = await supabase.from('recipes').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+
+      res.status(200).json({ deleted: id });
+    } catch (err) {
+      console.error('Failed to delete recipe:', err);
+      res.status(500).json({ error: err.message });
+    }
+    return;
+  }
+
+  res.status(405).json({ error: 'Use GET, PATCH, or DELETE' });
 };
