@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4096,
+        max_tokens: 8000,
         system: CLEANUP_PROMPT,
         messages: [{ role: 'user', content: JSON.stringify(shoppingList) }]
       })
@@ -68,8 +68,24 @@ module.exports = async (req, res) => {
     if (!textBlock) {
       throw new Error(`Claude returned no text content (stop_reason: ${data.stop_reason || 'unknown'})`);
     }
+    // Check for truncation explicitly — a text block can exist and still be
+    // cut off mid-JSON if the model ran out of tokens partway through. This
+    // gives a clear, specific error instead of letting JSON.parse fail with
+    // a generic "Unexpected end of JSON input" that doesn't say why.
+    if (data.stop_reason === 'max_tokens') {
+      throw new Error('Claude ran out of room writing the response (stop_reason: max_tokens) — the list may be too long for one pass.');
+    }
+
     const cleaned = textBlock.text.replace(/```json|```/g, '').trim();
-    const cleanedList = JSON.parse(cleaned);
+    let cleanedList;
+    try {
+      cleanedList = JSON.parse(cleaned);
+    } catch (parseErr) {
+      // Genuinely malformed (not a truncation case, already ruled out above) —
+      // include a snippet of what Claude actually returned so this is
+      // diagnosable instead of a bare "Unexpected end of JSON input".
+      throw new Error(`Could not parse Claude's response as JSON: ${parseErr.message}. Response started with: "${cleaned.slice(0, 150)}"`);
+    }
 
     res.status(200).json({ cleanedList });
   } catch (err) {
