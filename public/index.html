@@ -21,9 +21,10 @@
     --card: #FFFFFF;
   }
   * { box-sizing: border-box; }
-  html, body { overscroll-behavior-y: none; }
+  html, body { overscroll-behavior-y: none; overflow-x: hidden; }
   body {
     margin: 0;
+    width: 100%;
     background: var(--paper);
     color: var(--ink);
     font-family: 'Inter', sans-serif;
@@ -254,7 +255,7 @@
 
   .overlay {
     display: none; position: fixed; inset: 0; background: var(--paper);
-    z-index: 20; overflow-y: auto; overscroll-behavior-y: contain;
+    z-index: 20; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain;
   }
   .overlay.active { display: block; }
   .overlay-header { background: var(--forest); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
