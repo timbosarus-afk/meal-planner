@@ -7,8 +7,10 @@
 // make it" view once a batch has been marked ordered, and the "what's in
 // this batch" view while it's still being built up.
 // PATCH ?id=<planId> with { status: 'ordered' } marks it ordered.
-// POST ?id=<planId> with { recipeId, servingsOverride } adds one more
-// recipe to an existing batch.
+// POST ?id=<planId> with { recipeId, servingsOverride } adds a recipe to
+// the batch, OR updates its servings if it's already in the batch (see
+// upsert below — the per-recipe servings stepper on the batch detail
+// screen calls this same endpoint).
 // DELETE ?id=<planId> with { recipeId } removes a recipe from a batch. The
 // caller (frontend) is responsible for warning the user first if the batch
 // is already 'ordered' — this endpoint just performs the removal.
@@ -66,15 +68,23 @@ module.exports = async (req, res) => {
     const { recipeId, servingsOverride } = req.body || {};
     if (!recipeId) { res.status(400).json({ error: 'Missing "recipeId" in request body' }); return; }
 
+    // Upsert rather than plain insert: this endpoint doubles as "add a
+    // recipe to the batch" (new row) and "update this recipe's servings
+    // within the batch" (existing row) — the per-recipe servings stepper
+    // on the batch detail screen calls this same endpoint for a recipe
+    // that's already present, and needs the servings_override to actually
+    // update rather than silently no-op on the unique constraint.
     const { data, error } = await supabase
       .from('weekly_plan_recipes')
-      .insert({ weekly_plan_id: id, recipe_id: recipeId, servings_override: servingsOverride || null })
+      .upsert(
+        { weekly_plan_id: id, recipe_id: recipeId, servings_override: servingsOverride || null },
+        { onConflict: 'weekly_plan_id,recipe_id' }
+      )
       .select()
       .single();
 
-    // Unique constraint violation (already in this batch) is fine, not an error
-    if (error && error.code !== '23505') { res.status(500).json({ error: error.message }); return; }
-    res.status(200).json(data || { weekly_plan_id: id, recipe_id: recipeId });
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json(data);
     return;
   }
 
