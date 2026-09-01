@@ -64,7 +64,10 @@ module.exports = async (req, res) => {
     const data = await response.json();
     if (!response.ok) throw new Error(`Claude API error: ${data.error?.message || response.statusText}`);
 
-    const textBlock = data.content.find(b => b.type === 'text');
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    if (!textBlock) {
+      throw new Error(`Claude returned no text content (stop_reason: ${data.stop_reason || 'unknown'})`);
+    }
     const cleaned = textBlock.text.replace(/```json|```/g, '').trim();
     const cleanedList = JSON.parse(cleaned);
 
