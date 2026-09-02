@@ -1,11 +1,16 @@
 // Vercel serverless function — consolidated shopping list for ONE batch
 // (as opposed to the older /api/shopping-list, which takes ad-hoc
-// recipeIds and has no memory of a batch). This version excludes BOTH:
-//   - permanent staples (the `staples` table — salt, pepper, etc, never shop for these)
-//   - this batch's own "already have" taps (`weekly_plan_exclusions` — resets
-//     every batch since it's tied to a specific weekly_plan_id)
-// That's the two-tier exclusion: "always have" (permanent) vs "already have
-// this batch" (one-off, doesn't carry over).
+// recipeIds and has no memory of a batch).
+//
+// Two-tier exclusion, but they now behave differently on purpose:
+//   - permanent staples (the `staples` table) are pulled OUT of the main
+//     list entirely and returned as their own `staples` array, so they're
+//     still visible as a reminder ("you may not actually have this one
+//     this week") instead of silently vanishing.
+//   - this batch's own "already have" taps (`weekly_plan_exclusions`) no
+//     longer remove the item from the list at all — the item stays in its
+//     category with a `gotIt: true` flag, so ticking it is a visible
+//     checkmark in place rather than the item disappearing/moving.
 //
 // Each item also gets a rough category (Fruit & Veg, Meat & Fish, etc.) via
 // keyword matching, so the list can be grouped/collapsed by section rather
@@ -15,7 +20,7 @@
 // ingredient lists than the ground spice), refine based on real mismatches
 // rather than trying to enumerate every case up front.
 //
-// "usedIn" now prefers each recipe's nickname over its (often long, scraped)
+// "usedIn" prefers each recipe's nickname over its (often long, scraped)
 // title, so a shopping list line doesn't end up captioned with an entire
 // blog-post title.
 
@@ -88,17 +93,20 @@ module.exports = async (req, res) => {
     const displayName = (recipe) => (recipe?.nickname && recipe.nickname.trim()) ? recipe.nickname : (recipe?.title || 'Unknown recipe');
 
     const consolidated = {};
-    const excludedAsStaples = new Set();
-    const excludedAsAlreadyHave = new Set();
+    const stapleItems = new Set();
 
     for (const ing of ingredients) {
       const recipe = recipeById[ing.recipe_id];
       const targetServings = recipe?.servingsOverride || plan.servings_target;
       const scale = recipe?.servings ? targetServings / recipe.servings : 1;
 
-      if (isStaple(ing.item)) { excludedAsStaples.add(ing.item); continue; }
-      if (excludedThisWeek.has(ing.item.toLowerCase())) { excludedAsAlreadyHave.add(ing.item); continue; }
+      // Staples are pulled out entirely — they get their own section below,
+      // not folded into the main shopping math.
+      if (isStaple(ing.item)) { stapleItems.add(ing.item); continue; }
 
+      // "Got it" no longer excludes — the item stays in the normal
+      // consolidated list (still summed/scaled), just flagged so the
+      // frontend can show it ticked in place.
       const scaledQuantity = ing.quantity !== null ? Math.round(ing.quantity * scale * 100) / 100 : null;
       const key = `${ing.item.toLowerCase()}|${ing.unit || ''}`;
 
@@ -118,7 +126,8 @@ module.exports = async (req, res) => {
         unit: entry.unit,
         quantity: entry.hasQuantity ? Math.round(entry.quantity * 100) / 100 : null,
         usedIn: [...entry.sourceRecipes],
-        category: categorise(entry.item)
+        category: categorise(entry.item),
+        gotIt: excludedThisWeek.has(entry.item.toLowerCase())
       }))
       .sort((a, b) => a.category.localeCompare(b.category) || a.item.localeCompare(b.item));
 
@@ -128,8 +137,7 @@ module.exports = async (req, res) => {
       status: plan.status,
       recipeCount: planRecipes.length,
       shoppingList,
-      excludedAsStaples: [...excludedAsStaples],
-      excludedAsAlreadyHave: [...excludedAsAlreadyHave]
+      staples: [...stapleItems].sort()
     });
   } catch (err) {
     console.error('Failed to build plan shopping list:', err);
