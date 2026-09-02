@@ -183,11 +183,16 @@
   .receipt-header .r-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
   .receipt-divider { border-top: 1px dashed var(--line); margin: 0.6rem 0; }
 
-  .category-group { margin-bottom: 0.3rem; }
+  /* Bolder subheadings with a dashed divider between category blocks so
+     they read as clearly separate sections, not one blended list. */
+  .category-group { margin-bottom: 0.4rem; }
+  .category-group:not(:last-child) {
+    border-bottom: 1px dashed var(--line); padding-bottom: 0.6rem; margin-bottom: 0.6rem;
+  }
   .category-group summary {
-    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.82rem;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.95rem;
     text-transform: uppercase; letter-spacing: 0.03em; color: var(--forest);
-    cursor: pointer; padding: 0.6rem 0; list-style: none;
+    cursor: pointer; padding: 0.7rem 0 0.5rem; list-style: none;
   }
   .category-group summary::-webkit-details-marker { display: none; }
   .category-group summary::before { content: '▸ '; }
@@ -222,7 +227,13 @@
     text-transform: uppercase; letter-spacing: 0.03em; color: var(--forest); margin-bottom: 0.5rem;
   }
   .staples-section .staples-hint { font-size: 0.7rem; color: var(--muted); font-family: 'Inter', sans-serif; margin-bottom: 0.5rem; }
-  .staples-section .staples-item { font-size: 0.92rem; padding: 0.2rem 0; display: flex; align-items: center; gap: 0.4rem; }
+  .staples-section .staples-item {
+    font-size: 0.92rem; padding: 0.35rem 0; display: flex; align-items: center; justify-content: space-between;
+  }
+  .staples-remove-btn {
+    background: none; border: none; color: var(--muted); font-size: 1.15rem;
+    padding: 0.1rem 0.5rem; line-height: 1;
+  }
 
   /* Batch cards — soft, stackable, with a peek carousel and a floating summary bar.
      The whole card is tappable to open the batch, except the photo-strip
@@ -488,6 +499,7 @@ let currentRecipeDetail = null;
 let recipeDetailReturnTo = null;
 let lastShoppingListData = null;
 let defaultServings = 2;
+let allStaples = [];
 
 let pickerMode = null;
 let pickerBatchId = null;
@@ -593,6 +605,7 @@ async function saveAppTitle() {
 async function loadStaples() {
   const res = await fetch(`${API}/api/staples`);
   const staples = await res.json();
+  allStaples = staples; // kept for lookups (e.g. removing a staple from the shopping-list Staples section by name)
   const el = document.getElementById('stapleList');
 
   if (!staples.length) {
@@ -631,6 +644,24 @@ async function removeStaple(id) {
   });
   loadStaples();
   if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
+}
+
+// Removes a staple from the shopping list's own "Staples" section — same
+// underlying action as removeStaple() in Settings, just reachable from
+// where you're actually looking at it, with a confirm first since a stray
+// tap here would otherwise silently start including it on every list again.
+async function removeStapleFromShoppingList(name) {
+  const staple = allStaples.find(s => s.item_name.toLowerCase() === name.toLowerCase());
+  if (!staple) return;
+  if (!confirm(`Remove "${cap(name)}" from staples? It'll show up on shopping lists again.`)) return;
+
+  await fetch(`${API}/api/staples`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: staple.id })
+  });
+  loadStaples();
+  loadShoppingList(selectedShoppingBatchId);
 }
 
 // ---------- Recipes: import, gallery, detail ----------
@@ -720,8 +751,7 @@ async function importPastedText() {
 
 // overrideServings: passed when opening from a batch context, so the
 // recipe detail reflects the servings actually set for THAT batch instead
-// of the recipe's own default (was previously always showing the recipe's
-// base servings regardless of what the batch stepper had been set to).
+// of the recipe's own default.
 async function openRecipeDetail(id, returnTo, overrideServings) {
   const res = await fetch(`${API}/api/recipe?id=${id}`);
   const recipe = await res.json();
@@ -905,14 +935,19 @@ function adjustDetailServings(delta) {
 // Builds the whole screen once (hero image, title, nickname, stepper shell,
 // ingredients, steps) — only called when the recipe detail is first opened
 // or when the photo/content changes.
+// When opened from a batch (recipeDetailReturnTo starts with 'batch:'), the
+// photo button and nickname field are hidden — those are recipe-level
+// settings that belong on the recipe's own page (Recipes tab), not
+// something to fiddle with mid-shop from inside a batch.
 function renderRecipeDetailShell(targetServings) {
   const r = currentRecipeDetail;
+  const fromBatch = recipeDetailReturnTo && recipeDetailReturnTo.startsWith('batch:');
 
   document.getElementById('recipeOverlayContent').innerHTML = `
     <div class="hero-wrap">
       ${r.image_url ? `<img class="hero-img" src="${escapeHtml(r.image_url)}" alt="">` : `<div class="hero-img-placeholder">🍽️</div>`}
       <button class="hero-back-btn" onclick="closeRecipeDetail()">&larr;</button>
-      <button class="hero-photo-btn" id="heroPhotoBtn" onclick="triggerPhotoUpload()">📷 ${r.image_url ? 'Change photo' : 'Add photo'}</button>
+      ${!fromBatch ? `<button class="hero-photo-btn" id="heroPhotoBtn" onclick="triggerPhotoUpload()">📷 ${r.image_url ? 'Change photo' : 'Add photo'}</button>` : ''}
     </div>
     <div class="hero-card">
       <div class="overlay-title">${escapeHtml(displayName(r))}</div>
@@ -921,10 +956,12 @@ function renderRecipeDetailShell(targetServings) {
         ${r.confidence === 'low' ? '<span>⚠️ worth double-checking</span>' : ''}
       </div>
 
+      ${!fromBatch ? `
       <div class="nickname-row">
         <label>Nickname</label>
         <input type="text" class="nickname-input" id="nicknameInput" value="${escapeHtml(r.nickname || '')}" placeholder="${escapeHtml(r.title)}" onchange="saveNickname()">
       </div>
+      ` : ''}
 
       <div class="scale-row">
         <label>Servings</label>
@@ -939,6 +976,7 @@ function renderRecipeDetailShell(targetServings) {
       <div class="overlay-ing-list" id="ingredientsListContainer">${buildIngredientsHtml(targetServings)}</div>
       ${r.steps && r.steps.length ? `<ol>${r.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>` : '<div class="empty">No steps saved for this recipe.</div>'}
 
+      ${!fromBatch ? `
       <details class="replace-section">
         <summary>Replace this recipe with a new import</summary>
         <div class="replace-body">
@@ -955,6 +993,7 @@ function renderRecipeDetailShell(targetServings) {
       <div class="danger-zone">
         <button class="btn-danger btn-full" onclick="deleteCurrentRecipe()">🗑️ Delete this recipe</button>
       </div>
+      ` : ''}
     </div>
   `;
 }
@@ -1294,7 +1333,7 @@ function renderReceipt(data, aiCleaned) {
             </span>
             <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
             <span class="item-actions">
-              <button class="icon-round-btn ${item.gotIt ? 'checked' : ''}" onclick="toggleGotIt('${escapeHtml(item.item)}', ${item.gotIt})" title="Got it">✔️</button>
+              <button class="icon-round-btn ${item.gotIt ? 'checked' : ''}" data-got-it="${item.gotIt}" onclick="toggleGotIt(this, '${escapeHtml(item.item)}')" title="Got it">✔️</button>
               <button class="icon-round-btn" onclick="markStaple('${escapeHtml(item.item)}')" title="Always have (staple)">🧂</button>
             </span>
           </div>
@@ -1306,7 +1345,12 @@ function renderReceipt(data, aiCleaned) {
     ? `<div class="staples-section">
         <div class="staples-title">🧂 Staples (${data.staples.length})</div>
         <div class="staples-hint">Already excluded as permanent staples — check you actually still have these.</div>
-        ${data.staples.map(name => `<div class="staples-item">${escapeHtml(cap(name))}</div>`).join('')}
+        ${data.staples.map(name => `
+          <div class="staples-item">
+            <span>${escapeHtml(cap(name))}</span>
+            <button class="staples-remove-btn" onclick="removeStapleFromShoppingList('${escapeHtml(name)}')" title="Remove staple">&times;</button>
+          </div>
+        `).join('')}
       </div>`
     : '';
 
@@ -1348,24 +1392,25 @@ async function sortWithAI() {
   }
 }
 
-// Toggles "Got it" in place — no longer removes/moves the item, just flips
-// the persisted flag and re-renders so the row shows ticked/struck-through
-// but stays exactly where it was in its category.
-async function toggleGotIt(itemName, currentlyGotIt) {
-  if (currentlyGotIt) {
-    await fetch(`${API}/api/weekly-plan-exclude`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
-    });
-  } else {
-    await fetch(`${API}/api/weekly-plan-exclude`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
-    });
-  }
-  loadShoppingList(selectedShoppingBatchId);
+// Toggles "Got it" instantly in place — updates the DOM straight away (no
+// full list reload, which was the source of the noticeable tap lag) and
+// fires the save request in the background. Reads/writes state via a data
+// attribute on the button itself rather than baking the old state into the
+// onclick string, so it stays correct across repeated taps.
+function toggleGotIt(btn, itemName) {
+  const currentlyGotIt = btn.dataset.gotIt === 'true';
+  const newState = !currentlyGotIt;
+
+  btn.dataset.gotIt = String(newState);
+  btn.classList.toggle('checked', newState);
+  const line = btn.closest('.receipt-line');
+  if (line) line.classList.toggle('got-it', newState);
+
+  fetch(`${API}/api/weekly-plan-exclude`, {
+    method: newState ? 'POST' : 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
+  }).catch(err => console.error('Failed to save Got it state:', err));
 }
 
 async function markStaple(itemName) {
