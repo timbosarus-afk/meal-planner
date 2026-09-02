@@ -185,37 +185,44 @@
 
   .category-group { margin-bottom: 0.3rem; }
   .category-group summary {
-    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.78rem;
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.82rem;
     text-transform: uppercase; letter-spacing: 0.03em; color: var(--forest);
-    cursor: pointer; padding: 0.5rem 0; list-style: none;
+    cursor: pointer; padding: 0.6rem 0; list-style: none;
   }
   .category-group summary::-webkit-details-marker { display: none; }
   .category-group summary::before { content: '▸ '; }
   .category-group[open] summary::before { content: '▾ '; }
   .category-group summary .count { color: var(--muted); font-weight: 400; text-transform: none; }
 
+  /* Bigger item names (what you actually need to buy), smaller round icon
+     buttons for the two actions — was cramped text-buttons before. */
   .receipt-line {
-    display: flex; justify-content: space-between; align-items: center; gap: 0.6rem;
-    font-size: 0.83rem; padding: 0.35rem 0;
+    display: flex; justify-content: space-between; align-items: center; gap: 0.7rem;
+    font-size: 1.05rem; padding: 0.6rem 0;
   }
-  .receipt-line .item-info { flex: 1; }
-  .receipt-line .qty { color: var(--forest); white-space: nowrap; font-weight: 600; }
-  .receipt-line .used-in { display: block; font-size: 0.66rem; color: var(--muted); font-family: 'Inter', sans-serif; margin-top: 0.1rem; }
+  .receipt-line .item-info { flex: 1; min-width: 0; }
+  .receipt-line .item-name { font-weight: 700; }
+  .receipt-line.got-it .item-name { text-decoration: line-through; color: var(--muted); }
+  .receipt-line .qty { color: var(--forest); white-space: nowrap; font-weight: 700; font-size: 0.95rem; }
+  .receipt-line .used-in { display: block; font-size: 0.66rem; color: var(--muted); font-family: 'Inter', sans-serif; margin-top: 0.15rem; }
   .receipt-line .note { display: block; font-size: 0.66rem; color: var(--forest); font-family: 'Inter', sans-serif; margin-top: 0.1rem; font-style: italic; }
-  .receipt-line .item-actions { display: flex; gap: 0.3rem; }
-  .receipt-line .item-actions button {
-    font-family: 'Inter', sans-serif; font-size: 0.68rem; padding: 0.3rem 0.5rem; border-radius: 999px;
+  .receipt-line .item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .icon-round-btn {
+    width: 34px; height: 34px; border-radius: 50%; padding: 0; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+    background: var(--paper); border: 1.5px solid var(--line);
   }
-  .btn-gotit { background: var(--mustard); color: var(--ink); }
-  .btn-staple { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .icon-round-btn.checked { background: var(--mustard); border-color: var(--mustard); }
 
-  .sorted-section { margin-top: 1rem; font-family: 'Inter', sans-serif; }
-  .sorted-section summary { font-size: 0.75rem; color: var(--muted); cursor: pointer; }
-  .sorted-line {
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 0.78rem; padding: 0.3rem 0; color: var(--muted);
+  .staples-section {
+    margin-top: 1.2rem; background: var(--paper); border-radius: 14px; padding: 0.9rem 1rem;
   }
-  .sorted-line button { font-size: 0.68rem; padding: 0.25rem 0.5rem; background: transparent; border: 1px solid var(--line); color: var(--forest); border-radius: 999px; }
+  .staples-section .staples-title {
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.03em; color: var(--forest); margin-bottom: 0.5rem;
+  }
+  .staples-section .staples-hint { font-size: 0.7rem; color: var(--muted); font-family: 'Inter', sans-serif; margin-bottom: 0.5rem; }
+  .staples-section .staples-item { font-size: 0.92rem; padding: 0.2rem 0; display: flex; align-items: center; gap: 0.4rem; }
 
   /* Batch cards — soft, stackable, with a peek carousel and a floating summary bar.
      The whole card is tappable to open the batch, except the photo-strip
@@ -329,7 +336,7 @@
   }
   .sticky-bottom-bar .inner { max-width: 640px; margin: 0 auto; }
 
-  /* Round-button stepper — used in the picker/review screen, and now also
+  /* Round-button stepper — used in the picker/review screen, and also
      for per-recipe servings within a batch (batch detail list). */
   .stepper { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
   .stepper button { width: 32px; height: 32px; border-radius: 50%; padding: 0; background: var(--paper); color: var(--forest); border: 1.5px solid var(--forest); font-size: 1.1rem; line-height: 1; }
@@ -391,9 +398,9 @@
 
   <!-- BATCHES TAB (home page) -->
   <div id="tab-batches" class="tab-content active">
-    <button class="btn-primary btn-full" onclick="openPicker('new', null)" style="margin-bottom:1rem;">+ New batch</button>
 
     <div id="batchListSection">
+      <button class="btn-primary btn-full" onclick="openPicker('new', null)" style="margin-bottom:1rem;">+ New batch</button>
       <div id="batchList" class="empty">Loading…</div>
     </div>
 
@@ -711,12 +718,17 @@ async function importPastedText() {
   }
 }
 
-async function openRecipeDetail(id, returnTo) {
+// overrideServings: passed when opening from a batch context, so the
+// recipe detail reflects the servings actually set for THAT batch instead
+// of the recipe's own default (was previously always showing the recipe's
+// base servings regardless of what the batch stepper had been set to).
+async function openRecipeDetail(id, returnTo, overrideServings) {
   const res = await fetch(`${API}/api/recipe?id=${id}`);
   const recipe = await res.json();
   currentRecipeDetail = recipe;
   recipeDetailReturnTo = returnTo;
-  renderRecipeDetailShell(recipe.servings || defaultServings);
+  const initialServings = overrideServings || recipe.servings || defaultServings;
+  renderRecipeDetailShell(initialServings);
   document.getElementById('recipeOverlay').classList.add('active');
   document.getElementById('recipeOverlay').scrollTop = 0;
 }
@@ -1135,7 +1147,7 @@ async function loadBatchStrip(batchId) {
   }
 
   el.innerHTML = `<div class="photo-strip">${batch.recipes.map(r => `
-    <div class="strip-item" onclick="event.stopPropagation(); openRecipeDetail('${r.id}', 'batch:${batchId}')">
+    <div class="strip-item" onclick="event.stopPropagation(); openRecipeDetail('${r.id}', 'batch:${batchId}', ${r.servingsOverride || batch.servings_target})">
       ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="">` : `<div class="strip-placeholder">🍽️</div>`}
       <div class="strip-name">${escapeHtml(displayName(r))}</div>
     </div>
@@ -1154,7 +1166,7 @@ async function openBatchDetail(batchId) {
     const currentServings = r.servingsOverride || batch.servings_target;
     return `
     <div class="recipe-item">
-      <div onclick="openRecipeDetail('${r.id}', 'batch:${batch.id}')" style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0; cursor:pointer;">
+      <div onclick="openRecipeDetail('${r.id}', 'batch:${batch.id}', ${currentServings})" style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0; cursor:pointer;">
         ${thumbHtml(r, 'thumb-sm')}
         <div class="recipe-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(displayName(r))}</div>
       </div>
@@ -1274,32 +1286,28 @@ function renderReceipt(data, aiCleaned) {
       <details class="category-group" open>
         <summary>${cat} <span class="count">(${grouped[cat].length})</span></summary>
         ${grouped[cat].map(item => `
-          <div class="receipt-line" data-item="${escapeHtml(item.item)}">
+          <div class="receipt-line ${item.gotIt ? 'got-it' : ''}" data-item="${escapeHtml(item.item)}">
             <span class="item-info">
-              ${escapeHtml(cap(item.item))}
+              <span class="item-name">${escapeHtml(cap(item.item))}</span>
               <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
               ${item.note ? `<span class="note">${escapeHtml(item.note)}</span>` : ''}
             </span>
             <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
             <span class="item-actions">
-              <button class="btn-gotit" onclick="markGotIt('${escapeHtml(item.item)}', this)">Got it</button>
-              <button class="btn-staple" onclick="markStaple('${escapeHtml(item.item)}', this)" title="Always have — never show again">Always have</button>
+              <button class="icon-round-btn ${item.gotIt ? 'checked' : ''}" onclick="toggleGotIt('${escapeHtml(item.item)}', ${item.gotIt})" title="Got it">✔️</button>
+              <button class="icon-round-btn" onclick="markStaple('${escapeHtml(item.item)}')" title="Always have (staple)">🧂</button>
             </span>
           </div>
         `).join('')}
       </details>
     `).join('');
 
-  const sortedThisWeek = data.excludedAsAlreadyHave.length
-    ? `<details class="sorted-section">
-        <summary>Already sorted this batch (${data.excludedAsAlreadyHave.length}) — tap to view/undo</summary>
-        ${data.excludedAsAlreadyHave.map(name => `
-          <div class="sorted-line">
-            ${escapeHtml(cap(name))}
-            <button onclick="undoGotIt('${escapeHtml(name)}')">Undo</button>
-          </div>
-        `).join('')}
-      </details>`
+  const staplesHtml = data.staples && data.staples.length
+    ? `<div class="staples-section">
+        <div class="staples-title">🧂 Staples (${data.staples.length})</div>
+        <div class="staples-hint">Already excluded as permanent staples — check you actually still have these.</div>
+        ${data.staples.map(name => `<div class="staples-item">${escapeHtml(cap(name))}</div>`).join('')}
+      </div>`
     : '';
 
   document.getElementById('receiptWrap').innerHTML = `
@@ -1310,7 +1318,7 @@ function renderReceipt(data, aiCleaned) {
       </div>
       <div class="receipt-divider"></div>
       ${categoryHtml || '<div class="empty">Nothing left to buy — you have it all!</div>'}
-      ${sortedThisWeek}
+      ${staplesHtml}
     </div>
   `;
 }
@@ -1340,21 +1348,23 @@ async function sortWithAI() {
   }
 }
 
-async function markGotIt(itemName) {
-  await fetch(`${API}/api/weekly-plan-exclude`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
-  });
-  loadShoppingList(selectedShoppingBatchId);
-}
-
-async function undoGotIt(itemName) {
-  await fetch(`${API}/api/weekly-plan-exclude`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
-  });
+// Toggles "Got it" in place — no longer removes/moves the item, just flips
+// the persisted flag and re-renders so the row shows ticked/struck-through
+// but stays exactly where it was in its category.
+async function toggleGotIt(itemName, currentlyGotIt) {
+  if (currentlyGotIt) {
+    await fetch(`${API}/api/weekly-plan-exclude`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
+    });
+  } else {
+    await fetch(`${API}/api/weekly-plan-exclude`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: selectedShoppingBatchId, itemName })
+    });
+  }
   loadShoppingList(selectedShoppingBatchId);
 }
 
