@@ -572,9 +572,9 @@ async function loadSettings() {
   defaultServings = parseInt(settings.default_servings, 10) || 2;
   document.getElementById('defaultServingsInput').value = defaultServings;
 
-  const appTitle = settings.app_title && settings.app_title.trim() ? settings.app_title : 'meal-planner';
+  const appTitle = settings.meal_app_title && settings.meal_app_title.trim() ? settings.meal_app_title : 'meal-planner';
   document.getElementById('appTitleHeader').textContent = appTitle;
-  document.getElementById('appTitleInput').value = settings.app_title || '';
+  document.getElementById('appTitleInput').value = settings.meal_app_title || '';
   document.title = appTitle;
 }
 
@@ -596,7 +596,7 @@ async function saveAppTitle() {
   await fetch(`${API}/api/settings`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: 'app_title', value: val })
+    body: JSON.stringify({ key: 'meal_app_title', value: val })
   });
 }
 
