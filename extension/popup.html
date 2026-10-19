@@ -3,38 +3,52 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  body { width: 380px; font-family: -apple-system, sans-serif; margin: 0; padding: 12px; background: #F5F7F2; color: #1F2A1E; }
-  h1 { font-size: 14px; margin: 0 0 10px; }
+  body { width: 380px; font-family: 'Nunito', -apple-system, sans-serif; margin: 0; padding: 12px; background: #FFF8F0; color: #1F2A1E; }
+  h1 { font-size: 15px; margin: 0 0 10px; color: #1B4D3E; }
+  h2 { font-size: 12px; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .04em; color: #6B7566; display: flex; justify-content: space-between; }
   .settings { font-size: 11px; margin-bottom: 10px; }
-  .settings input { width: 100%; box-sizing: border-box; padding: 5px; font-size: 11px; margin-top: 3px; }
-  .recipe-row { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #C9D0C2; }
+  .settings input, select { width: 100%; box-sizing: border-box; padding: 6px; font-size: 12px; margin-top: 3px; border: 1px solid #C9D0C2; border-radius: 6px; background: #fff; }
   label { font-size: 11px; color: #6B7566; }
-  input[type=number] { width: 50px; padding: 4px; }
-  button { background: #2F5233; color: #fff; border: none; border-radius: 6px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
-  .item-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 5px 0; border-bottom: 1px dashed #C9D0C2; gap: 8px; }
-  .item-row span:first-child { flex: 1; }
-  .item-row .open-btn { width: auto; margin: 0; padding: 4px 8px; font-size: 11px; background: #D9A441; color: #1F2A1E; }
-  .item-row .staple-btn { width: auto; margin: 0; padding: 4px 6px; font-size: 10px; background: transparent; color: #6B7566; border: 1px solid #C9D0C2; }
-  .item-row.done { opacity: 0.4; text-decoration: line-through; }
-  .status { font-size: 11px; margin-top: 6px; color: #6B7566; }
-  #recipeList, #listResults { max-height: 260px; overflow-y: auto; margin-top: 6px; }
+  button { background: #1B4D3E; color: #fff; border: none; border-radius: 8px; padding: 9px 10px; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secondary { background: transparent; color: #1B4D3E; border: 1px solid #1B4D3E; }
+  button.danger { background: #B3261E; }
+  .row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed #C9D0C2; gap: 8px; }
+  .row .main { flex: 1; min-width: 0; }
+  .row .sub { font-size: 10px; color: #6B7566; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .packs { font-weight: 800; color: #1B4D3E; }
+  .row button { width: auto; margin: 0; padding: 4px 8px; font-size: 11px; }
+  .row .ghost { background: transparent; color: #6B7566; border: 1px solid #C9D0C2; font-weight: 600; }
+  .pill { font-size: 10px; padding: 2px 6px; border-radius: 999px; font-weight: 700; }
+  .pill.added { background: #DDEEE4; color: #1B4D3E; }
+  .pill.skipped { background: #EEE; color: #555; }
+  .pill.partial, .pill.failed { background: #F9DEDC; color: #B3261E; }
+  .status { font-size: 11px; margin-top: 6px; color: #6B7566; min-height: 14px; }
+  .list { max-height: 220px; overflow-y: auto; }
+  .empty { font-size: 12px; color: #6B7566; padding: 6px 0; }
 </style>
 </head>
 <body>
-  <h1>Shopping list</h1>
+  <h1>Shopping assistant</h1>
 
   <div class="settings">
     <label>Vercel API URL (once, saved)</label>
-    <input type="text" id="apiUrl" placeholder="https://meal-planner-xxxx.vercel.app">
+    <input type="text" id="apiUrl" placeholder="https://meal-planner-mocha-one.vercel.app">
   </div>
 
-  <div id="recipeList">Loading recipes…</div>
-
-  <label>Servings: <input type="number" id="servings" value="2"></label>
-  <button id="generateBtn">Generate list</button>
+  <label>Batch
+    <select id="batchSelect"><option>Loading…</option></select>
+  </label>
   <div class="status" id="status"></div>
 
-  <div id="listResults"></div>
+  <div id="runSection"></div>
+
+  <h2><span>Ready to add</span><span id="basketCount"></span></h2>
+  <div class="list" id="basketList"></div>
+  <button id="addAllBtn" disabled>Add all to basket</button>
+
+  <h2><span>Needs linking</span><span id="unlinkedCount"></span></h2>
+  <div class="list" id="unlinkedList"></div>
 
   <script src="popup.js"></script>
 </body>

@@ -1,182 +1,221 @@
-// v0.4 scope: reuses a single shopping tab instead of spawning one per item
-// (big speed/clutter improvement), and adds an "Always have" button per
-// item that permanently excludes it from future shopping lists via the
-// staples table — the answer to "what about salt and pepper".
+// v0.5: batch-based. Pick a batch, see which items are linked to a known
+// Sainsbury's product (ready to add) and which still need linking.
+//
+// "Add all to basket" hands a queue to product.js, which walks the shopping
+// tab through each product page, clicks Add and bumps the quantity. State
+// lives in chrome.storage.local, so the popup closing mid-run is fine.
+//
+// "Find" on an unlinked item opens Sainsbury's search for it and pre-fills
+// the link panel, so linking is: Find -> click the product you want -> Save.
 
-const apiUrlInput = document.getElementById('apiUrl');
-const statusEl = document.getElementById('status');
-const recipeListEl = document.getElementById('recipeList');
-const listResultsEl = document.getElementById('listResults');
+const $ = id => document.getElementById(id);
+const apiUrlInput = $('apiUrl');
+const statusEl = $('status');
+const batchSelect = $('batchSelect');
+
+let currentList = null;
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
 
 async function getApiUrl() {
-  const stored = await chrome.storage.local.get('apiUrl');
-  if (stored.apiUrl) {
-    apiUrlInput.value = stored.apiUrl;
-    return stored.apiUrl;
-  }
-  return null;
+  const { apiUrl } = await chrome.storage.local.get('apiUrl');
+  if (apiUrl) apiUrlInput.value = apiUrl;
+  return apiUrl || null;
 }
 
 apiUrlInput.addEventListener('change', async () => {
   const url = apiUrlInput.value.trim().replace(/\/$/, '');
   await chrome.storage.local.set({ apiUrl: url });
-  loadRecipes();
+  loadBatches();
 });
 
-async function saveSelectedRecipes() {
-  const checked = [...document.querySelectorAll('#recipeList input:checked')].map(c => c.value);
-  await chrome.storage.local.set({ selectedRecipeIds: checked });
-}
-
-async function loadRecipes() {
-  const apiUrl = await getApiUrl();
-  if (!apiUrl) {
-    recipeListEl.textContent = 'Paste your Vercel API URL above first.';
-    return;
-  }
-
-  try {
-    const res = await fetch(`${apiUrl}/api/recipes`);
-    const recipes = await res.json();
-
-    if (!recipes.length) {
-      recipeListEl.textContent = 'No recipes saved yet — import some from the mobile page first.';
-      return;
-    }
-
-    const { selectedRecipeIds = [] } = await chrome.storage.local.get('selectedRecipeIds');
-
-    recipeListEl.innerHTML = recipes.map(r => `
-      <div class="recipe-row">
-        <input type="checkbox" value="${r.id}" id="r-${r.id}" ${selectedRecipeIds.includes(r.id) ? 'checked' : ''}>
-        <label for="r-${r.id}">${escapeHtml(r.title)}</label>
-      </div>
-    `).join('');
-
-    recipeListEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', saveSelectedRecipes));
-  } catch (err) {
-    console.error('meal-planner: recipe fetch failed', err);
-    recipeListEl.textContent = `Could not reach the API: ${err.message}`;
-  }
-}
-
-document.getElementById('generateBtn').addEventListener('click', async () => {
-  const apiUrl = await getApiUrl();
-  if (!apiUrl) { statusEl.textContent = 'Set your API URL first.'; return; }
-
-  const checked = [...document.querySelectorAll('#recipeList input:checked')].map(c => c.value);
-  const servings = parseInt(document.getElementById('servings').value, 10) || 2;
-
-  if (!checked.length) { statusEl.textContent = 'Tick at least one recipe.'; return; }
-
-  statusEl.textContent = 'Building list…';
-
-  try {
-    const res = await fetch(`${apiUrl}/api/shopping-list`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipeIds: checked, servingsTarget: servings })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed');
-
-    // New list, so progress starts fresh — save it as the current list
-    // with no items marked done yet.
-    await chrome.storage.local.set({ currentList: data.shoppingList, doneItems: [] });
-    renderList(data.shoppingList, []);
-    statusEl.textContent = '';
-  } catch (err) {
-    statusEl.textContent = err.message;
-  }
-});
-
-async function markDone(itemName) {
-  const { doneItems = [] } = await chrome.storage.local.get('doneItems');
-  if (!doneItems.includes(itemName)) {
-    doneItems.push(itemName);
-    await chrome.storage.local.set({ doneItems });
-  }
-}
-
-// Reuses one dedicated shopping tab across all items instead of spawning a
-// new tab per click — going through a 15-20 item list used to leave you
-// with 15-20 open tabs, which was both slow and messy to navigate.
+// Reuse one dedicated shopping tab (same as v0.4)
 async function openInShoppingTab(url) {
   const { shoppingTabId } = await chrome.storage.local.get('shoppingTabId');
-
   if (shoppingTabId) {
-    try {
-      await chrome.tabs.update(shoppingTabId, { url, active: true });
-      return;
-    } catch (err) {
-      // Tab was closed since last time — fall through and open a fresh one
-    }
+    try { await chrome.tabs.update(shoppingTabId, { url, active: true }); return; } catch { /* closed */ }
   }
-
   const tab = await chrome.tabs.create({ url });
   await chrome.storage.local.set({ shoppingTabId: tab.id });
 }
 
-// Marks an item as a permanent staple (e.g. salt, pepper, oil) — excluded
-// from every future generated list. Removes it from the current list too
-// since you clearly don't need to shop for it this week either.
-async function markAsStaple(itemName, apiUrl) {
+// ---- Batches --------------------------------------------------------------
+
+async function loadBatches() {
+  const apiUrl = await getApiUrl();
+  if (!apiUrl) { batchSelect.innerHTML = '<option>Set the API URL first</option>'; return; }
+
   try {
-    await fetch(`${apiUrl}/api/staples`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemName })
-    });
+    const res = await fetch(`${apiUrl}/api/weekly-plans`);
+    const batches = await res.json();
+    if (!res.ok) throw new Error(batches.error || 'Failed to load batches');
+    if (!batches.length) { batchSelect.innerHTML = '<option>No batches yet</option>'; return; }
+
+    const { selectedBatchId } = await chrome.storage.local.get('selectedBatchId');
+    batchSelect.innerHTML = batches.map(b => {
+      const d = new Date(b.week_start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      return `<option value="${b.id}">${escapeHtml(d)} · ${escapeHtml(b.status)} · ${b.servings_target} servings</option>`;
+    }).join('');
+    batchSelect.value = batches.some(b => b.id === selectedBatchId) ? selectedBatchId : batches[0].id;
+    loadList();
   } catch (err) {
-    console.error('meal-planner: failed to save staple', err);
+    statusEl.textContent = `Could not reach the API: ${err.message}`;
   }
 }
 
-function renderList(items, doneItems) {
-  listResultsEl.innerHTML = items.map((item, i) => `
-    <div class="item-row ${doneItems.includes(item.item) ? 'done' : ''}" id="item-${i}">
-      <span>${item.quantity ? `${item.quantity}${item.unit || ''} ` : ''}${escapeHtml(item.item)}</span>
-      <span>
-        <button data-item="${escapeHtml(item.item)}" data-idx="${i}" class="open-btn">Copy + open</button>
-        <button data-item="${escapeHtml(item.item)}" data-idx="${i}" class="staple-btn" title="Always have this — exclude from future lists">Always have</button>
-      </span>
-    </div>
-  `).join('');
+batchSelect.addEventListener('change', async () => {
+  await chrome.storage.local.set({ selectedBatchId: batchSelect.value });
+  loadList();
+});
 
-  listResultsEl.querySelectorAll('.open-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      navigator.clipboard.writeText(btn.dataset.item);
-      const searchUrl = `https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(btn.dataset.item)}`;
-      await openInShoppingTab(searchUrl);
-      document.getElementById(`item-${btn.dataset.idx}`).classList.add('done');
-      await markDone(btn.dataset.item);
-    });
-  });
+// ---- Shopping list --------------------------------------------------------
 
-  listResultsEl.querySelectorAll('.staple-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const apiUrl = await getApiUrl();
-      if (!apiUrl) return;
-      await markAsStaple(btn.dataset.item, apiUrl);
-      const row = document.getElementById(`item-${btn.dataset.idx}`);
+async function loadList() {
+  const apiUrl = await getApiUrl();
+  const id = batchSelect.value;
+  if (!apiUrl || !id) return;
+
+  statusEl.textContent = 'Loading list…';
+  try {
+    const res = await fetch(`${apiUrl}/api/weekly-plan-shopping-list?id=${encodeURIComponent(id)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    if (!data.basket) throw new Error('API is on an older version (no basket data) - deploy first');
+
+    currentList = data;
+    await chrome.storage.local.set({ unlinkedKeys: data.unlinked.map(u => u.ingredientKey) });
+    renderBasket(data.basket);
+    renderUnlinked(data.unlinked);
+    statusEl.textContent = '';
+  } catch (err) {
+    statusEl.textContent = err.message;
+  }
+}
+
+function renderBasket(basket) {
+  $('basketCount').textContent = basket.length ? `${basket.length}` : '';
+  $('addAllBtn').disabled = !basket.length;
+  if (!basket.length) {
+    $('basketList').innerHTML = '<div class="empty">Nothing linked yet. Link a few items below and they\'ll show up here next time.</div>';
+    return;
+  }
+  $('basketList').innerHTML = basket.map((b, i) => `
+    <div class="row">
+      <div class="main">
+        <div><span class="packs">${b.packs}×</span> ${escapeHtml(b.productName || b.ingredientKey)}</div>
+        <div class="sub">for: ${escapeHtml(b.items.join(', '))}</div>
+      </div>
+      <button class="ghost view-btn" data-idx="${i}" title="Open product page (re-link from there if it's wrong)">View</button>
+    </div>`).join('');
+
+  $('basketList').querySelectorAll('.view-btn').forEach(btn => btn.addEventListener('click', () => {
+    openInShoppingTab(basket[btn.dataset.idx].productUrl);
+  }));
+}
+
+function renderUnlinked(unlinked) {
+  $('unlinkedCount').textContent = unlinked.length ? `${unlinked.length}` : '';
+  if (!unlinked.length) {
+    $('unlinkedList').innerHTML = '<div class="empty">Everything on this list is linked 🎉</div>';
+    return;
+  }
+  $('unlinkedList').innerHTML = unlinked.map((u, i) => `
+    <div class="row" id="u-${i}">
+      <div class="main">
+        <div>${escapeHtml(u.ingredientKey)}</div>
+        ${u.items.length > 1 || u.items[0].toLowerCase() !== u.ingredientKey ? `<div class="sub">${escapeHtml(u.items.join(', '))}</div>` : ''}
+      </div>
+      <button class="find-btn" data-idx="${i}">Find</button>
+      <button class="ghost staple-btn" data-idx="${i}" title="Always have this - exclude from future lists">Always have</button>
+    </div>`).join('');
+
+  $('unlinkedList').querySelectorAll('.find-btn').forEach(btn => btn.addEventListener('click', async () => {
+    const key = unlinked[btn.dataset.idx].ingredientKey;
+    await chrome.storage.local.set({ linkingKey: key });
+    await openInShoppingTab(`https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(key)}`);
+  }));
+
+  $('unlinkedList').querySelectorAll('.staple-btn').forEach(btn => btn.addEventListener('click', async () => {
+    const apiUrl = await getApiUrl();
+    const key = unlinked[btn.dataset.idx].ingredientKey;
+    try {
+      await fetch(`${apiUrl}/api/staples`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemName: key })
+      });
+      const row = $(`u-${btn.dataset.idx}`);
       row.style.opacity = '0.3';
       row.querySelectorAll('button').forEach(b => b.disabled = true);
-    });
+    } catch (err) {
+      statusEl.textContent = `Couldn't save staple: ${err.message}`;
+    }
+  }));
+}
+
+// ---- Basket run -----------------------------------------------------------
+
+$('addAllBtn').addEventListener('click', async () => {
+  if (!currentList?.basket?.length) return;
+  const apiUrl = await getApiUrl();
+  const queue = currentList.basket.map(b => ({
+    linkId: b.linkId,
+    ingredientKey: b.ingredientKey,
+    productUrl: b.productUrl,
+    productSlug: b.productSlug,
+    productName: b.productName,
+    packs: b.packs
+  }));
+  await chrome.storage.local.set({
+    basketRun: { active: true, queue, index: 0, results: [], apiUrl, batchId: batchSelect.value, startedAt: Date.now() }
   });
-}
+  await openInShoppingTab(queue[0].productUrl);
+});
 
-async function restoreListIfAny() {
-  const { currentList, doneItems = [] } = await chrome.storage.local.get(['currentList', 'doneItems']);
-  if (currentList && currentList.length) {
-    renderList(currentList, doneItems);
+async function renderRun() {
+  const { basketRun: run } = await chrome.storage.local.get('basketRun');
+  const el = $('runSection');
+  if (!run) { el.innerHTML = ''; return; }
+
+  if (run.active) {
+    el.innerHTML = `
+      <h2><span>Adding to basket</span><span>${run.index}/${run.queue.length}</span></h2>
+      <button class="danger" id="stopRunBtn">Stop</button>`;
+    $('stopRunBtn').onclick = async () => {
+      run.active = false; run.stopped = true; run.finishedAt = Date.now();
+      await chrome.storage.local.set({ basketRun: run });
+      renderRun();
+    };
+    return;
   }
+
+  const added = run.results.filter(r => r.status === 'added').length;
+  const issues = run.results.filter(r => r.status !== 'added');
+  const notReached = run.queue.length - run.results.length;
+  el.innerHTML = `
+    <h2><span>Last run${run.stopped ? ' (stopped)' : ''}</span><span>${added}/${run.queue.length} added</span></h2>
+    ${issues.map((r, i) => `
+      <div class="row">
+        <div class="main">
+          <div>${escapeHtml(r.productName || r.ingredientKey)}</div>
+          <div class="sub">${escapeHtml(r.note || '')}</div>
+        </div>
+        <span class="pill ${r.status}">${r.status}</span>
+        <button class="ghost issue-btn" data-idx="${i}">Open</button>
+      </div>`).join('')}
+    ${notReached ? `<div class="empty">${notReached} not reached.</div>` : ''}
+    <button class="secondary" id="clearRunBtn">Clear</button>`;
+
+  el.querySelectorAll('.issue-btn').forEach(btn => btn.addEventListener('click', () => openInShoppingTab(issues[btn.dataset.idx].productUrl)));
+  $('clearRunBtn').onclick = async () => { await chrome.storage.local.remove('basketRun'); renderRun(); };
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+// Keep the run section live while the popup is open
+chrome.storage.onChanged.addListener(changes => { if (changes.basketRun) renderRun(); });
 
-loadRecipes();
-restoreListIfAny();
+loadBatches();
+renderRun();

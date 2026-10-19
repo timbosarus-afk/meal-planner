@@ -23,8 +23,16 @@
 // "usedIn" prefers each recipe's nickname over its (often long, scraped)
 // title, so a shopping list line doesn't end up captioned with an entire
 // blog-post title.
+//
+// Product links (Oct 2026): every item now carries a normalised
+// `ingredientKey`. Items whose key has a row in `product_links` are grouped
+// into a `basket` array (one entry per linked ingredient, with the number of
+// packs to add, summed across every line that maps to it before rounding up).
+// Items still needing a link come back in `unlinked`. "Got it" items are left
+// out of both — you already have them.
 
 const { supabase } = require('../lib/db');
+const { ingredientKey, packsNeeded } = require('../lib/ingredient-key');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -72,14 +80,25 @@ module.exports = async (req, res) => {
 
     const recipeIds = planRecipes.map(pr => pr.recipe_id);
 
-    const [{ data: ingredients, error: ingError }, { data: staples, error: staplesError }, { data: exclusions, error: exclError }] = await Promise.all([
+    const [
+      { data: ingredients, error: ingError },
+      { data: staples, error: staplesError },
+      { data: exclusions, error: exclError },
+      { data: links, error: linksError }
+    ] = await Promise.all([
       supabase.from('recipe_ingredients').select('recipe_id, quantity, unit, item, notes').in('recipe_id', recipeIds.length ? recipeIds : ['00000000-0000-0000-0000-000000000000']),
       supabase.from('staples').select('item_name'),
-      supabase.from('weekly_plan_exclusions').select('item_name').eq('weekly_plan_id', planId)
+      supabase.from('weekly_plan_exclusions').select('item_name').eq('weekly_plan_id', planId),
+      supabase.from('product_links').select('*')
     ]);
     if (ingError) throw new Error(ingError.message);
     if (staplesError) throw new Error(staplesError.message);
     if (exclError) throw new Error(exclError.message);
+    // Don't fail the whole list if the links table is missing/unreachable —
+    // the list still works, it just won't have basket data.
+    if (linksError) console.error('product_links lookup failed:', linksError.message);
+
+    const linkByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
 
     const stapleNames = staples.map(s => s.item_name.toLowerCase());
     const excludedThisWeek = new Set(exclusions.map(e => e.item_name.toLowerCase()));
@@ -121,15 +140,51 @@ module.exports = async (req, res) => {
     }
 
     const shoppingList = Object.values(consolidated)
-      .map(entry => ({
-        item: entry.item,
-        unit: entry.unit,
-        quantity: entry.hasQuantity ? Math.round(entry.quantity * 100) / 100 : null,
-        usedIn: [...entry.sourceRecipes],
-        category: categorise(entry.item),
-        gotIt: excludedThisWeek.has(entry.item.toLowerCase())
-      }))
+      .map(entry => {
+        const iKey = ingredientKey(entry.item);
+        return {
+          item: entry.item,
+          unit: entry.unit,
+          quantity: entry.hasQuantity ? Math.round(entry.quantity * 100) / 100 : null,
+          usedIn: [...entry.sourceRecipes],
+          category: categorise(entry.item),
+          gotIt: excludedThisWeek.has(entry.item.toLowerCase()),
+          ingredientKey: iKey,
+          linked: !!linkByKey[iKey]
+        };
+      })
       .sort((a, b) => a.category.localeCompare(b.category) || a.item.localeCompare(b.item));
+
+    // Group still-needed items by ingredient key: linked keys become basket
+    // entries (packs summed across all matching lines), the rest are unlinked.
+    const byKey = {};
+    for (const it of shoppingList) {
+      if (it.gotIt || !it.ingredientKey) continue;
+      (byKey[it.ingredientKey] ||= []).push(it);
+    }
+
+    const basket = [];
+    const unlinked = [];
+    for (const [iKey, items] of Object.entries(byKey)) {
+      const link = linkByKey[iKey];
+      if (link) {
+        basket.push({
+          linkId: link.id,
+          ingredientKey: iKey,
+          productUrl: link.product_url,
+          productSlug: link.product_slug,
+          productName: link.product_name,
+          packSize: link.pack_size,
+          packUnit: link.pack_unit,
+          packs: packsNeeded(items.map(i => ({ quantity: i.quantity, unit: i.unit })), link),
+          items: items.map(i => i.item)
+        });
+      } else {
+        unlinked.push({ ingredientKey: iKey, items: items.map(i => i.item) });
+      }
+    }
+    basket.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
+    unlinked.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
 
     res.status(200).json({
       planId,
@@ -137,7 +192,9 @@ module.exports = async (req, res) => {
       status: plan.status,
       recipeCount: planRecipes.length,
       shoppingList,
-      staples: [...stapleItems].sort()
+      staples: [...stapleItems].sort(),
+      basket,
+      unlinked
     });
   } catch (err) {
     console.error('Failed to build plan shopping list:', err);

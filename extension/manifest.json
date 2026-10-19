@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "meal-planner shopping assistant",
-  "version": "0.4.0",
-  "description": "Builds your shopping list, opens Sainsbury's search for each item, and highlights the Add button. Auto-add coming once product matching is solid.",
+  "version": "0.5.0",
+  "description": "Pulls a batch's shopping list, adds linked Sainsbury's products straight to your basket, and lets you link new ones from any product page.",
   "action": { "default_popup": "popup.html" },
   "permissions": ["storage", "tabs"],
   "host_permissions": ["https://*/*"],
@@ -10,6 +10,11 @@
     {
       "matches": ["https://www.sainsburys.co.uk/gol-ui/SearchResults/*"],
       "js": ["content.js"]
+    },
+    {
+      "matches": ["https://www.sainsburys.co.uk/gol-ui/*"],
+      "js": ["product.js"],
+      "run_at": "document_idle"
     }
   ]
 }
