@@ -514,6 +514,19 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// "3 cloves", "1.5kg", "750ml", "2" - quantities from the parser are in
+// g / ml / count units, so scale big metric values up for readability.
+function fmtQty(q, unit) {
+  if (q === null || q === undefined) return '';
+  const n = Number(q);
+  const r = v => (v >= 10 ? Math.round(v) : Math.round(v * 100) / 100);
+  if (unit === 'g') return n >= 1000 ? `${r(n / 1000)}kg` : `${r(n)}g`;
+  if (unit === 'ml') return n >= 1000 ? `${r(n / 1000)}l` : `${r(n)}ml`;
+  if (!unit) return `${r(n)}`;
+  const plural = { clove: 'cloves', tin: 'tins', jar: 'jars', pack: 'packs', bunch: 'bunches', sprig: 'sprigs', slice: 'slices', stick: 'sticks' };
+  return `${r(n)} ${n === 1 ? unit : (plural[unit] || unit)}`;
+}
+
 function cap(str) {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -549,8 +562,9 @@ const CATEGORY_KEYWORDS = [
 ];
 function categoriseClient(itemName) {
   const lower = itemName.toLowerCase();
+  const startsWord = k => lower === k || lower.startsWith(k) || lower.includes(' ' + k) || lower.includes('/' + k);
   for (const [category, keywords] of CATEGORY_KEYWORDS) {
-    if (keywords.some(k => lower.includes(k))) return category;
+    if (keywords.some(k => startsWord(k.trim()))) return category;
   }
   return 'Other';
 }
@@ -918,7 +932,7 @@ function buildIngredientsHtml(targetServings) {
       <div class="ing-row">
         <div class="ing-icon">${icon}</div>
         <div class="ing-text">
-          ${scaledQty !== null ? `<span class="qty">${scaledQty}${ing.unit || ''}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}
+          ${scaledQty !== null ? `<span class="qty">${fmtQty(scaledQty, ing.unit)}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}
         </div>
       </div>
     `;
@@ -1331,7 +1345,7 @@ function renderReceipt(data, aiCleaned) {
               <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
               ${item.note ? `<span class="note">${escapeHtml(item.note)}</span>` : ''}
             </span>
-            <span class="qty">${item.quantity !== null ? item.quantity + (item.unit ? item.unit : '') : ''}</span>
+            <span class="qty">${item.quantity !== null ? fmtQty(item.quantity, item.unit) : ''}</span>
             <span class="item-actions">
               <button class="icon-round-btn ${item.gotIt ? 'checked' : ''}" data-got-it="${item.gotIt}" onclick="toggleGotIt(this, '${escapeHtml(item.item)}')" title="Got it">✔️</button>
               <button class="icon-round-btn" onclick="markStaple('${escapeHtml(item.item)}')" title="Always have (staple)">🧂</button>
