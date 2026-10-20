@@ -42,19 +42,29 @@ function setCors(res) {
 }
 
 const CATEGORY_KEYWORDS = [
-  ['Herbs & Spices', ['salt', 'black pepper', 'ground pepper', 'peppercorn', 'cumin', 'paprika', 'cinnamon', 'oregano', 'thyme', 'rosemary', 'bay leaf', 'chilli flake', 'chili flake', 'nutmeg', 'cardamom', 'turmeric', 'coriander seed', 'cayenne', 'garam masala', 'mixed spice', 'vanilla extract', 'basil', 'parsley', 'mint', 'dill', 'sage', 'tarragon']],
+  ['Herbs & Spices', ['salt', 'black pepper', 'ground pepper', 'peppercorn', 'cumin', 'paprika', 'cinnamon', 'oregano', 'thyme', 'rosemary', 'bay leaf', 'chilli flake', 'chili flake', 'nutmeg', 'cardamom', 'turmeric', 'coriander seed', 'cayenne', 'garam masala', 'mixed spice', 'vanilla extract', 'basil', 'parsley', 'mint', 'dill', 'sage', 'tarragon', 'allspice', 'italian herb', 'mixed herb', 'herbes de provence', 'chilli powder', 'chili powder', 'curry powder', 'five spice', 'za\'atar', 'sumac', 'fennel seed', 'mustard seed', 'clove (ground)', 'ground ginger', 'coriander', 'chives']],
   ['Meat & Fish', ['chicken', 'beef', 'pork', 'lamb', 'mince', 'bacon', 'sausage', 'turkey', 'fish', 'salmon', 'prawn', 'shrimp', 'cod', 'tuna', 'ham', 'chorizo', 'anchovy', 'steak']],
   ['Dairy & Eggs', ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'yoghurt', 'egg', 'mozzarella', 'parmesan', 'feta', 'mascarpone', 'ricotta', 'buttermilk']],
   ['Bakery', ['bread', 'bun', 'baguette', 'tortilla', 'pitta', 'pita', 'naan', 'bagel', 'croissant', 'brioche']],
-  ['Store Cupboard', ['rice', 'pasta', 'flour', 'sugar', 'olive oil', 'vegetable oil', 'sunflower oil', 'vinegar', 'tin ', 'tinned', 'canned', 'stock cube', 'stock pot', 'passata', 'ketchup', 'mustard', 'honey', 'jam', 'cereal', 'oats', 'lentil', 'chickpea', 'noodle', 'soy sauce', 'fish sauce', 'worcestershire', 'breadcrumb', 'cornflour', 'baking powder', 'baking soda', 'yeast']],
+  ['Store Cupboard', ['chopped tomato', 'tomato purée', 'tomato puree', 'pasta sauce', 'coconut milk', 'wine', 'linguine', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'lasagne', 'lasagna', 'macaroni', 'orzo', 'couscous', 'stock', 'gravy', 'pesto', 'curry paste', 'harissa', 'sriracha', 'mayonnaise', 'tahini', 'peanut butter', 'beans', 'rice', 'pasta', 'flour', 'sugar', 'olive oil', 'vegetable oil', 'sunflower oil', 'vinegar', 'tin ', 'tinned', 'canned', 'stock cube', 'stock pot', 'passata', 'ketchup', 'mustard', 'honey', 'jam', 'cereal', 'oats', 'lentil', 'chickpea', 'noodle', 'soy sauce', 'fish sauce', 'worcestershire', 'breadcrumb', 'cornflour', 'baking powder', 'baking soda', 'yeast']],
   ['Frozen', ['frozen', 'ice cream', 'peas (frozen']],
   ['Fruit & Veg', ['onion', 'garlic', 'tomato', 'potato', 'carrot', 'pepper', 'lettuce', 'spinach', 'cucumber', 'courgette', 'aubergine', 'eggplant', 'mushroom', 'apple', 'banana', 'lemon', 'lime', 'avocado', 'broccoli', 'cauliflower', 'celery', 'ginger', 'chilli', 'chili', 'kale', 'leek', 'sweetcorn', 'corn', 'squash', 'pumpkin', 'beetroot', 'radish', 'spring onion', 'shallot', 'orange', 'berry', 'berries', 'grape', 'pear', 'peach', 'mango', 'pineapple', 'melon']]
 ];
 
+// You can't buy 0.4 of an egg: count units round up (with a little
+// tolerance so 2.02 cloves stays 2), weights/volumes round to whole g/ml.
+function roundForShopping(q, unit) {
+  if (unit === 'g' || unit === 'ml') return Math.max(1, Math.round(q));
+  return Math.max(1, Math.ceil(q - 0.05));
+}
+
+// Keywords must start a word: "salt" matches "sea salt" but not "unsalted"
+const startsWord = (text, k) => text === k || text.startsWith(k) || text.includes(' ' + k) || text.includes('/' + k);
+
 function categorise(itemName) {
   const lower = itemName.toLowerCase();
   for (const [category, keywords] of CATEGORY_KEYWORDS) {
-    if (keywords.some(k => lower.includes(k))) return category;
+    if (keywords.some(k => startsWord(lower, k.trim()))) return category;
   }
   return 'Other';
 }
@@ -103,9 +113,17 @@ module.exports = async (req, res) => {
     const stapleNames = staples.map(s => s.item_name.toLowerCase());
     const excludedThisWeek = new Set(exclusions.map(e => e.item_name.toLowerCase()));
 
+    // Staples match on the normalised ingredient key, so "tomato purée
+    // (paste)" covers "tomato purée" and "lasagna sheets" covers "lasagne
+    // sheets". A staple key also matches as a whole word inside a longer
+    // item ("salt" covers "salt and pepper") but never mid-word ("salt"
+    // must not catch "unsalted butter").
+    const escapeRe = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const stapleKeys = [...new Set(stapleNames.map(n => ingredientKey(n)).filter(Boolean))];
+    const stapleRes = stapleKeys.map(k => new RegExp(`(^|[^a-z])${escapeRe(k)}([^a-z]|$)`));
     const isStaple = (itemName) => {
-      const lower = itemName.toLowerCase();
-      return stapleNames.some(s => lower.includes(s) || s.includes(lower));
+      const key = ingredientKey(itemName);
+      return stapleKeys.includes(key) || stapleRes.some(re => re.test(key));
     };
 
     const recipeById = Object.fromEntries(planRecipes.map(pr => [pr.recipe_id, { ...pr.recipes, servingsOverride: pr.servings_override }]));
@@ -127,11 +145,17 @@ module.exports = async (req, res) => {
       // consolidated list (still summed/scaled), just flagged so the
       // frontend can show it ticked in place.
       const scaledQuantity = ing.quantity !== null ? Math.round(ing.quantity * scale * 100) / 100 : null;
-      const key = `${ing.item.toLowerCase()}|${ing.unit || ''}`;
+      // Consolidate on the normalised ingredient key + unit, so "garlic" (2
+      // cloves) and "garlic cloves" (3) become one line of 5 cloves.
+      const iKey = ingredientKey(ing.item) || ing.item.toLowerCase();
+      const key = `${iKey}|${ing.unit || ''}`;
 
       if (!consolidated[key]) {
-        consolidated[key] = { item: ing.item, unit: ing.unit, quantity: 0, hasQuantity: false, sourceRecipes: new Set() };
+        consolidated[key] = { item: ing.item, unit: ing.unit, quantity: 0, hasQuantity: false, sourceRecipes: new Set(), names: new Set(), iKey };
       }
+      // Show the shortest name seen ("garlic" over "garlic cloves")
+      if (ing.item.length < consolidated[key].item.length) consolidated[key].item = ing.item;
+      consolidated[key].names.add(ing.item.toLowerCase());
       if (scaledQuantity !== null) {
         consolidated[key].quantity += scaledQuantity;
         consolidated[key].hasQuantity = true;
@@ -141,14 +165,14 @@ module.exports = async (req, res) => {
 
     const shoppingList = Object.values(consolidated)
       .map(entry => {
-        const iKey = ingredientKey(entry.item);
+        const iKey = entry.iKey;
         return {
           item: entry.item,
           unit: entry.unit,
-          quantity: entry.hasQuantity ? Math.round(entry.quantity * 100) / 100 : null,
+          quantity: entry.hasQuantity ? roundForShopping(entry.quantity, entry.unit) : null,
           usedIn: [...entry.sourceRecipes],
           category: categorise(entry.item),
-          gotIt: excludedThisWeek.has(entry.item.toLowerCase()),
+          gotIt: excludedThisWeek.has(entry.item.toLowerCase()) || [...entry.names].some(n => excludedThisWeek.has(n)),
           ingredientKey: iKey,
           linked: !!linkByKey[iKey]
         };
