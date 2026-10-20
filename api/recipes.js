@@ -4,6 +4,7 @@
 // full detail with ingredients/steps.
 
 const { supabase } = require('../lib/db');
+const reparseIngredients = require('../lib/reparse-ingredients');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,6 +16,9 @@ function setCors(res) {
 module.exports = async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+
+  // Maintenance tool: GET previews, POST applies (see lib/reparse-ingredients.js)
+  if (req.query && req.query.action === 'reparse') return reparseIngredients(req, res);
 
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Use GET' });
