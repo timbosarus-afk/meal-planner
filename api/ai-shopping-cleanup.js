@@ -34,10 +34,28 @@ function setCors(res) {
   res.setHeader('Cache-Control', 'no-store');
 }
 
+const { parsePantryText, suggestIdeas } = require('../lib/pantry-ai');
+
 module.exports = async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Use POST' }); return; }
+
+  // Pantry helpers share this function to stay inside the 12-function cap.
+  const action = req.query && req.query.action;
+  if (action === 'pantry-parse') {
+    try {
+      const { text } = req.body || {};
+      if (!text || !String(text).trim()) return res.status(400).json({ error: 'Missing "text"' });
+      return res.status(200).json({ items: await parsePantryText(text) });
+    } catch (err) { console.error('pantry-parse failed:', err); return res.status(500).json({ error: err.message }); }
+  }
+  if (action === 'ideas') {
+    try {
+      const { have, knownRecipes } = req.body || {};
+      return res.status(200).json({ ideas: await suggestIdeas(have || [], knownRecipes || []) });
+    } catch (err) { console.error('ideas failed:', err); return res.status(500).json({ error: err.message }); }
+  }
 
   const { shoppingList } = req.body || {};
   if (!Array.isArray(shoppingList) || !shoppingList.length) {
