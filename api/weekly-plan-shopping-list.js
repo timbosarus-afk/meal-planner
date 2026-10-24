@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
       { data: links, error: linksError }
     ] = await Promise.all([
       supabase.from('recipe_ingredients').select('recipe_id, quantity, unit, item, notes').in('recipe_id', recipeIds.length ? recipeIds : ['00000000-0000-0000-0000-000000000000']),
-      supabase.from('staples').select('item_name'),
+      supabase.from('pantry_items').select('item_name, ingredient_key, kind, quantity, unit'),
       supabase.from('weekly_plan_exclusions').select('item_name').eq('weekly_plan_id', planId),
       supabase.from('product_links').select('*')
     ]);
@@ -110,7 +110,8 @@ module.exports = async (req, res) => {
 
     const linkByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
 
-    const stapleNames = staples.map(s => s.item_name.toLowerCase());
+    const stapleNames = staples.filter(s => s.kind === 'always').map(s => s.item_name.toLowerCase());
+    const stockByKey = Object.fromEntries(staples.filter(s => s.kind === 'stock').map(s => [s.ingredient_key, s]));
     const excludedThisWeek = new Set(exclusions.map(e => e.item_name.toLowerCase()));
 
     // Staples match on the normalised ingredient key, so "tomato purée
@@ -209,6 +210,12 @@ module.exports = async (req, res) => {
     }
     basket.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
     unlinked.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
+
+    // Hint lines for things already in the fridge/freezer/cupboard
+    for (const line of shoppingList) {
+      const st = stockByKey[ingredientKey(line.item)];
+      if (st) line.have = st.quantity != null ? `${st.quantity}${st.unit ? ' ' + st.unit : ''}` : 'in pantry';
+    }
 
     res.status(200).json({
       planId,
