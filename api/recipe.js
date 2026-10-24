@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
 
       const { data: ingredients, error: ingError } = await supabase
         .from('recipe_ingredients')
-        .select('id, quantity, unit, item, notes, position')
+        .select('id, quantity, unit, item, notes, position, role')
         .eq('recipe_id', id)
         .order('position');
       if (ingError) throw new Error(ingError.message);
