@@ -371,6 +371,52 @@
   }
   .review-item .review-info { flex: 1; }
   .review-item .remove-x { background: none; border: none; color: var(--muted); font-size: 1.3rem; padding: 0.2rem 0.4rem; }
+
+  /* bottom nav + More sheet */
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; top: auto; z-index: 15; background: var(--forest-dark);
+    padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 10px rgba(0,0,0,0.15); }
+  .tabbar button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0.55rem 0.2rem 0.5rem; font-size: 0.7rem; border-bottom: none !important; border-top: 3px solid transparent; }
+  .tabbar button .ico { font-size: 1.25rem; line-height: 1; }
+  .tabbar button.active { border-top: 3px solid var(--mustard) !important; }
+  body { padding-bottom: 5.5rem; }
+  .sheet-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+  .sheet-backdrop.open { display: block; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 22px 22px 0 0; padding: 1rem 1rem 2rem; z-index: 41; transform: translateY(105%); transition: transform .22s ease; max-width: 640px; margin: 0 auto; }
+  .sheet { visibility: hidden; }
+  .sheet.open { transform: translateY(0); visibility: visible; }
+  .sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+  .sheet-grid button { background: var(--paper); border: 1.5px solid var(--line); border-radius: 16px; padding: 0.9rem 0.3rem; font-family: 'Nunito', sans-serif; font-weight: 700; color: var(--forest); font-size: 0.85rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sheet-grid button .ico { font-size: 1.6rem; }
+  /* pantry */
+  section h2 .sub { display: block; font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
+  .pantry-sec { margin-bottom: 1rem; }
+  .pantry-sec h3 { font-family: 'Nunito', sans-serif; font-size: 0.95rem; margin: 0 0 0.45rem; color: var(--forest); }
+  .pantry-sec .sub { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+  .stock-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); }
+  .stock-row .nm { flex: 1; font-size: 0.92rem; }
+  .stock-row input.q { width: 4rem; padding: 0.3rem 0.4rem; text-align: right; }
+  .stock-row input.u { width: 3.6rem; padding: 0.3rem 0.4rem; }
+  .x-btn { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 0 0.3rem; }
+  .seg { display: flex; gap: 0.4rem; margin: 0.5rem 0; }
+  .seg label { flex: 1; text-align: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 0.45rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--muted); }
+  .seg input { display: none; }
+  .seg input:checked + span { color: var(--forest); }
+  .seg label:has(input:checked) { border-color: var(--forest); background: #EAF3EE; color: var(--forest); }
+  .review-row { display: grid; grid-template-columns: 1fr 4rem 3.6rem 2rem; gap: 0.35rem; margin-bottom: 0.4rem; align-items: center; }
+  .review-row select { grid-column: 1 / 4; font-size: 0.78rem; padding: 0.3rem; }
+  .review-row input { padding: 0.4rem; min-width: 0; }
+  /* can make */
+  .tier-title { font-family: 'Nunito', sans-serif; font-weight: 800; margin: 1rem 0 0.5rem; color: var(--forest); }
+  .cm-card { display: flex; gap: 0.7rem; background: var(--card); border-radius: 16px; padding: 0.7rem; margin-bottom: 0.6rem; box-shadow: 0 2px 10px rgba(27,77,62,0.07); }
+  .cm-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 12px; }
+  .cm-card .ph { width: 56px; height: 56px; border-radius: 12px; background: var(--line); display:flex; align-items:center; justify-content:center; font-size:1.5rem; }
+  .cm-body { flex: 1; min-width: 0; }
+  .cm-title { font-weight: 700; font-size: 0.95rem; }
+  .cm-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .chip { display: inline-block; font-size: 0.68rem; font-weight: 700; border-radius: 10px; padding: 1px 7px; margin-left: 4px; cursor: pointer; border: 1px solid var(--line); color: var(--muted); background: var(--paper); }
+  .chip.optional { color: #8a6a1c; border-color: var(--mustard); background: #FBF1D8; }
+  .chip.swappable { color: #2c5d8a; border-color: #9cc0e0; background: #E8F1FA; }
+  .mini-btn { font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 10px; border: 1.5px solid var(--forest); background: var(--paper); color: var(--forest); font-weight: 700; cursor: pointer; margin-top: 0.4rem; }
 </style>
 </head>
 <body>
@@ -380,10 +426,18 @@
 </header>
 
 <div class="tabbar">
-  <button id="tabbtn-shopping" onclick="switchTab('shopping')">Shopping</button>
-  <button id="tabbtn-batches" class="active" onclick="switchTab('batches')">Batches</button>
-  <button id="tabbtn-recipes" onclick="switchTab('recipes')">Recipes</button>
-  <button id="tabbtn-settings" onclick="switchTab('settings')">Settings</button>
+  <button id="tabbtn-batches" class="active" onclick="switchTab('batches')"><span class="ico">🍽️</span>Batches</button>
+  <button id="tabbtn-shopping" onclick="switchTab('shopping')"><span class="ico">🛒</span>Shopping</button>
+  <button id="tabbtn-recipes" onclick="switchTab('recipes')"><span class="ico">📖</span>Recipes</button>
+  <button id="tabbtn-pantry" onclick="switchTab('pantry')"><span class="ico">🥫</span>Pantry</button>
+  <button id="tabbtn-more" onclick="openMoreSheet()"><span class="ico">☰</span>More</button>
+</div>
+<div class="sheet-backdrop" id="sheetBackdrop" onclick="closeMoreSheet()"></div>
+<div class="sheet" id="moreSheet">
+  <div class="sheet-grid">
+    <button onclick="closeMoreSheet(); switchTab('canmake')"><span class="ico">🧑‍🍳</span>What can I make</button>
+    <button onclick="closeMoreSheet(); switchTab('settings')"><span class="ico">⚙️</span>Settings</button>
+  </div>
 </div>
 
 <main>
@@ -444,6 +498,48 @@
     </section>
   </div>
 
+  <!-- PANTRY TAB -->
+  <div id="tab-pantry" class="tab-content">
+    <section>
+      <h2>Tell me what you have</h2>
+      <p class="empty" style="margin-top:0">Use your keyboard mic and just talk: "six eggs, milk, sausages, salmon, prawns, a tin of chickpeas".</p>
+      <textarea id="pantryDump" rows="3" placeholder="Dictate or type what's in the house"></textarea>
+      <div class="seg">
+        <label><input type="radio" name="pantryMode" value="add" checked><span>Add to what I have</span></label>
+        <label><input type="radio" name="pantryMode" value="stocktake"><span>Full stocktake (replaces fridge/freezer/cupboard)</span></label>
+      </div>
+      <button class="btn-primary btn-full" id="pantryParseBtn" onclick="parsePantryDump()">Sort it out</button>
+      <div id="pantryReview"></div>
+    </section>
+    <section>
+      <button class="btn-secondary btn-full" style="margin-top:0" onclick="switchTab('canmake')">🧑‍🍳 What can I make with this?</button>
+    </section>
+    <div id="pantryBody"></div>
+    <section>
+      <h2>Add one item</h2>
+      <div class="row">
+        <input type="text" id="newStaple" placeholder="e.g. paprika, 6 eggs">
+        <select id="newPantrySection"></select>
+      </div>
+      <button class="btn-primary btn-full" onclick="addPantryItem()">Add</button>
+    </section>
+  </div>
+
+  <!-- WHAT CAN I MAKE TAB -->
+  <div id="tab-canmake" class="tab-content">
+    <section>
+      <h2>What can I make?</h2>
+      <p class="empty" style="margin-top:0">Based on your Pantry. Tap an ingredient tag in a recipe (core / optional / swappable) to tell me what is skippable.</p>
+      <button class="btn-primary btn-full" style="margin-top:0" onclick="loadCanMake()">Refresh</button>
+    </section>
+    <div id="canMakeBody"></div>
+    <section>
+      <h2>Need ideas?</h2>
+      <button class="btn-secondary btn-full" style="margin-top:0" onclick="loadIdeas()">✨ Ask AI for ideas from my pantry</button>
+      <div id="ideasBody"></div>
+    </section>
+  </div>
+
   <!-- SETTINGS TAB -->
   <div id="tab-settings" class="tab-content">
     <section>
@@ -458,12 +554,8 @@
       <p class="empty" style="margin-top:0.5rem;">Used to pre-fill servings whenever you add a recipe to a batch.</p>
     </section>
     <section>
-      <h2>Staples — always have these</h2>
-      <div id="stapleList" class="staple-pill-list"></div>
-      <div class="row">
-        <input type="text" id="newStaple" placeholder="e.g. salt, sugar, olive oil">
-        <button class="btn-primary" onclick="addStaple()">Add</button>
-      </div>
+      <h2>Staples</h2>
+      <p class="empty" style="margin-top:0">Staples now live in the Pantry tab (Spices, Oils & Sauces, Baking & Dry Goods).</p>
     </section>
   </div>
 
@@ -569,13 +661,266 @@ function categoriseClient(itemName) {
   return 'Other';
 }
 
-// ---------- Tabs ----------
+// ---------- Tabs + More sheet ----------
+
+const MORE_TABS = ['canmake', 'settings'];
 
 function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tabbar button').forEach(el => el.classList.remove('active'));
   document.getElementById(`tab-${name}`).classList.add('active');
-  document.getElementById(`tabbtn-${name}`).classList.add('active');
+  const btn = document.getElementById(MORE_TABS.includes(name) ? 'tabbtn-more' : `tabbtn-${name}`);
+  if (btn) btn.classList.add('active');
+  if (name === 'pantry') loadStaples();
+  if (name === 'canmake') loadCanMake();
+  window.scrollTo(0, 0);
+}
+function openMoreSheet() {
+  document.getElementById('sheetBackdrop').classList.add('open');
+  document.getElementById('moreSheet').classList.add('open');
+}
+function closeMoreSheet() {
+  document.getElementById('sheetBackdrop').classList.remove('open');
+  document.getElementById('moreSheet').classList.remove('open');
+}
+
+// ---------- Pantry ----------
+
+const ALWAYS_SECTIONS = ['Spices & Herbs', 'Oils, Sauces & Condiments', 'Baking & Dry Goods'];
+const STOCK_SECTIONS = ['Fridge', 'Freezer', 'Cupboard'];
+const SECTION_ICONS = { 'Spices & Herbs': '🧂', 'Oils, Sauces & Condiments': '🫒', 'Baking & Dry Goods': '🌾', 'Fridge': '🧊', 'Freezer': '❄️', 'Cupboard': '🥫' };
+
+async function loadStaples() {
+  try {
+    const res = await fetch(`${API}/api/staples`);
+    const items = await res.json();
+    if (!Array.isArray(items)) throw new Error(items.error || 'bad response');
+    allStaples = items; // all pantry items, any kind
+  } catch (err) {
+    console.error('pantry load failed', err);
+    allStaples = [];
+  }
+  renderPantry();
+}
+
+function renderPantry() {
+  const sel = document.getElementById('newPantrySection');
+  if (sel && !sel.options.length) {
+    sel.innerHTML = [...ALWAYS_SECTIONS, ...STOCK_SECTIONS].map(x => `<option>${escapeHtml(x)}</option>`).join('');
+    sel.value = 'Fridge';
+  }
+  const body = document.getElementById('pantryBody');
+  if (!body) return;
+  const pantry = allStaples.filter(i => i.kind !== 'want');
+  body.innerHTML = [
+    ['Always have', 'staples are left off shopping lists', ALWAYS_SECTIONS],
+    ['In the house right now', 'quantities are optional', STOCK_SECTIONS]
+  ].map(([title, sub, secs]) => `
+    <section>
+      <h2>${title} <span class="sub">${sub}</span></h2>
+      ${secs.map(sec => {
+        const rows = pantry.filter(i => i.section === sec);
+        const isAlways = ALWAYS_SECTIONS.includes(sec);
+        return `<div class="pantry-sec"><h3>${SECTION_ICONS[sec]} ${escapeHtml(sec)} <span class="sub">(${rows.length})</span></h3>
+          ${!rows.length ? '<span class="empty">Nothing yet</span>' : isAlways
+            ? `<div class="staple-pill-list">${rows.map(r => `<span class="staple-pill">${escapeHtml(r.item_name)}<button onclick="removePantryItem('${r.id}')" title="Remove">&times;</button></span>`).join('')}</div>`
+            : rows.map(r => `<div class="stock-row">
+                <span class="nm">${escapeHtml(cap(r.item_name))}</span>
+                <input class="q" type="number" step="any" inputmode="decimal" value="${r.quantity ?? ''}" placeholder="qty" onchange="patchPantry('${r.id}', {quantity: this.value})">
+                <input class="u" type="text" value="${escapeHtml(r.unit || '')}" placeholder="unit" onchange="patchPantry('${r.id}', {unit: this.value})">
+                <button class="x-btn" onclick="removePantryItem('${r.id}')" title="Used up">&times;</button>
+              </div>`).join('')}
+        </div>`;
+      }).join('')}
+    </section>`).join('');
+}
+
+async function patchPantry(id, fields) {
+  await fetch(`${API}/api/staples`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...fields }) });
+  const it = allStaples.find(i => i.id === id);
+  if (it) Object.assign(it, fields);
+}
+
+async function removePantryItem(id) {
+  await fetch(`${API}/api/staples`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  await loadStaples();
+  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
+}
+const removeStaple = removePantryItem;
+
+async function addPantryItem() {
+  const input = document.getElementById('newStaple');
+  const text = input.value.trim();
+  if (!text) return;
+  const section = document.getElementById('newPantrySection').value;
+  // "6 eggs" -> qty 6; anything else is just a name
+  const m = text.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+  const body = m ? { itemName: m[2], quantity: Number(m[1]), section } : { itemName: text, section };
+  await fetch(`${API}/api/staples`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  input.value = '';
+  await loadStaples();
+  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
+}
+const addStaple = addPantryItem;
+
+let pantryReviewItems = [];
+
+async function parsePantryDump() {
+  const text = document.getElementById('pantryDump').value.trim();
+  if (!text) return;
+  const btn = document.getElementById('pantryParseBtn');
+  btn.disabled = true; btn.textContent = 'Sorting…';
+  try {
+    const res = await fetch(`${API}/api/ai-shopping-cleanup?action=pantry-parse`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Parse failed');
+    pantryReviewItems = data.items.map(i => ({ ...i, section: i.section || 'Cupboard' }));
+    renderPantryReview();
+  } catch (err) {
+    alert('Could not sort that: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sort it out';
+  }
+}
+
+function renderPantryReview() {
+  const el = document.getElementById('pantryReview');
+  if (!pantryReviewItems.length) { el.innerHTML = ''; return; }
+  const secOpts = cur => [...ALWAYS_SECTIONS, ...STOCK_SECTIONS].map(x => `<option ${x === cur ? 'selected' : ''}>${escapeHtml(x)}</option>`).join('');
+  el.innerHTML = `
+    <h2 style="margin-top:1rem">Check this looks right</h2>
+    ${pantryReviewItems.map((it, i) => `
+      <div class="review-row">
+        <input type="text" value="${escapeHtml(it.item)}" onchange="pantryReviewItems[${i}].item = this.value">
+        <input type="number" step="any" inputmode="decimal" value="${it.quantity ?? ''}" placeholder="qty" onchange="pantryReviewItems[${i}].quantity = this.value === '' ? null : Number(this.value)">
+        <input type="text" value="${escapeHtml(it.unit || '')}" placeholder="unit" onchange="pantryReviewItems[${i}].unit = this.value || null">
+        <button class="x-btn" onclick="pantryReviewItems.splice(${i},1); renderPantryReview()">&times;</button>
+        <select onchange="pantryReviewItems[${i}].section = this.value">${secOpts(it.section)}</select>
+      </div>`).join('')}
+    <button class="btn-primary btn-full" onclick="savePantryReview()">Save ${pantryReviewItems.length} item${pantryReviewItems.length === 1 ? '' : 's'} to pantry</button>
+    <button class="btn-secondary btn-full" onclick="pantryReviewItems = []; renderPantryReview()">Cancel</button>`;
+}
+
+async function savePantryReview() {
+  const mode = document.querySelector('input[name="pantryMode"]:checked').value;
+  if (mode === 'stocktake' && !confirm('Full stocktake replaces everything currently in Fridge, Freezer and Cupboard with this list. Always-have items are untouched. Continue?')) return;
+  const res = await fetch(`${API}/api/staples`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: pantryReviewItems, mode }) });
+  const data = await res.json();
+  if (!res.ok) { alert('Save failed: ' + (data.error || res.status)); return; }
+  pantryReviewItems = [];
+  document.getElementById('pantryDump').value = '';
+  renderPantryReview();
+  await loadStaples();
+}
+
+// ---------- What can I make ----------
+
+let lastCanMake = null;
+const TIER_TITLES = { now: '✅ You can make these now', one: '☝️ One ingredient away', two: '✌️ Two ingredients away' };
+
+async function loadCanMake() {
+  const body = document.getElementById('canMakeBody');
+  body.innerHTML = '<p class="empty">Checking your pantry…</p>';
+  try {
+    const res = await fetch(`${API}/api/recipes?action=can-make`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed');
+    lastCanMake = data;
+    renderCanMake();
+  } catch (err) {
+    body.innerHTML = `<p class="empty">Could not check: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderCanMake() {
+  const body = document.getElementById('canMakeBody');
+  const d = lastCanMake;
+  if (!d.pantryCount) { body.innerHTML = '<section><p class="empty" style="margin:0">Your pantry is empty. Add what you have in the Pantry tab first.</p></section>'; return; }
+  const wanted = new Set(allStaples.filter(i => i.kind === 'want').map(i => i.item_name));
+  let html = '';
+  for (const tier of ['now', 'one', 'two']) {
+    const rows = d.results.filter(r => r.tier === tier);
+    if (!rows.length) continue;
+    html += `<div class="tier-title">${TIER_TITLES[tier]}</div>` + rows.map(r => {
+      const core = r.missingCore.map(m => m.item);
+      const other = r.missingOther.map(m => `${escapeHtml(m.item)} <span class="chip ${m.role}">${m.role}</span>`);
+      return `<div class="cm-card">
+        ${r.image_url ? `<img src="${escapeHtml(r.image_url)}" alt="">` : '<div class="ph">🍲</div>'}
+        <div class="cm-body">
+          <div class="cm-title" onclick="openRecipeDetail('${r.id}')" style="cursor:pointer">${escapeHtml(r.title)}</div>
+          <div class="cm-meta">${r.haveCount} of ${r.total} ingredients in</div>
+          ${core.length ? `<div class="cm-meta">Missing: <b>${core.map(escapeHtml).join(', ')}</b></div>` : ''}
+          ${other.length ? `<div class="cm-meta">Skippable: ${other.join(', ')}</div>` : ''}
+          ${core.length ? `<button class="mini-btn" onclick="addWanted(${JSON.stringify(core).replace(/"/g, '&quot;')})">${core.every(c => wanted.has(c.toLowerCase())) ? '✓ On next order' : '+ Add to next order'}</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  body.innerHTML = html || '<section><p class="empty" style="margin:0">Nothing within two ingredients yet. Try the AI ideas below, or add more to your pantry.</p></section>';
+}
+
+async function addWanted(names) {
+  for (const n of names) {
+    await fetch(`${API}/api/staples`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemName: n, kind: 'want' }) });
+  }
+  await loadStaples();
+  renderCanMake();
+}
+
+async function removeWanted(id) {
+  await removePantryItem(id);
+  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
+}
+
+let lastIdeas = [];
+async function loadIdeas() {
+  const el = document.getElementById('ideasBody');
+  el.innerHTML = '<p class="empty">Thinking…</p>';
+  try {
+    const have = allStaples.filter(i => i.kind !== 'want').map(i => i.quantity ? `${i.quantity}${i.unit ? ' ' + i.unit : ''} ${i.item_name}` : i.item_name);
+    const res = await fetch(`${API}/api/ai-shopping-cleanup?action=ideas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ have, knownRecipes: recipes.map(r => r.nickname || r.title) }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed');
+    lastIdeas = data.ideas;
+    el.innerHTML = lastIdeas.map((idea, i) => `
+      <div class="cm-card" style="margin-top:0.6rem"><div class="cm-body">
+        <div class="cm-title">${escapeHtml(idea.title)}</div>
+        <div class="cm-meta">${escapeHtml(idea.why || '')}</div>
+        ${idea.missing && idea.missing.length ? `<div class="cm-meta">Also need: <b>${idea.missing.map(escapeHtml).join(', ')}</b></div>` : ''}
+        <button class="mini-btn" id="saveIdea${i}" onclick="saveIdea(${i})">Save as recipe</button>
+      </div></div>`).join('') || '<p class="empty">No ideas came back.</p>';
+  } catch (err) {
+    el.innerHTML = `<p class="empty">Could not get ideas: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function saveIdea(i) {
+  const idea = lastIdeas[i];
+  const btn = document.getElementById(`saveIdea${i}`);
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const text = `${idea.title}\nServes ${idea.servings || 2}\n\nIngredients\n${(idea.ingredients || []).map(g => `${g.quantity ?? ''} ${g.unit ?? ''} ${g.item}`.replace(/\s+/g, ' ').trim()).join('\n')}\n\nMethod\n${(idea.steps || []).map((s, n) => `${n + 1}. ${s}`).join('\n')}`;
+  try {
+    const res = await fetch(`${API}/api/import-recipe-text`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed');
+    btn.textContent = '✓ Saved to Recipes';
+    await loadRecipes();
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Save as recipe';
+    alert('Could not save: ' + err.message);
+  }
+}
+
+// ---------- Ingredient roles (tap the tag in a recipe) ----------
+
+const NEXT_ROLE = { core: 'optional', optional: 'swappable', swappable: 'core' };
+async function cycleRole(ingredientId) {
+  const ing = currentRecipeDetail.ingredients.find(x => x.id === ingredientId);
+  if (!ing) return;
+  ing.role = NEXT_ROLE[ing.role || 'core'];
+  const el = document.getElementById('detailServingsVal');
+  document.getElementById('ingredientsListContainer').innerHTML = buildIngredientsHtml(el ? parseInt(el.textContent, 10) : currentRecipeDetail.servings);
+  fetch(`${API}/api/recipes?action=set-role`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ingredientId, role: ing.role }) }).catch(console.error);
 }
 
 // ---------- Settings ----------
@@ -614,58 +959,12 @@ async function saveAppTitle() {
   });
 }
 
-// ---------- Staples ----------
-
-async function loadStaples() {
-  const res = await fetch(`${API}/api/staples`);
-  const staples = await res.json();
-  allStaples = staples; // kept for lookups (e.g. removing a staple from the shopping-list Staples section by name)
-  const el = document.getElementById('stapleList');
-
-  if (!staples.length) {
-    el.innerHTML = '<span class="empty">No staples yet — add things like salt, sugar, oil below.</span>';
-    return;
-  }
-
-  el.innerHTML = staples.map(s => `
-    <span class="staple-pill">
-      ${escapeHtml(s.item_name)}
-      <button onclick="removeStaple('${s.id}')" title="Remove">&times;</button>
-    </span>
-  `).join('');
-}
-
-async function addStaple() {
-  const input = document.getElementById('newStaple');
-  const itemName = input.value.trim();
-  if (!itemName) return;
-
-  await fetch(`${API}/api/staples`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ itemName })
-  });
-  input.value = '';
-  loadStaples();
-  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
-}
-
-async function removeStaple(id) {
-  await fetch(`${API}/api/staples`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  });
-  loadStaples();
-  if (selectedShoppingBatchId) loadShoppingList(selectedShoppingBatchId);
-}
-
 // Removes a staple from the shopping list's own "Staples" section — same
 // underlying action as removeStaple() in Settings, just reachable from
 // where you're actually looking at it, with a confirm first since a stray
 // tap here would otherwise silently start including it on every list again.
 async function removeStapleFromShoppingList(name) {
-  const staple = allStaples.find(s => s.item_name.toLowerCase() === name.toLowerCase());
+  const staple = allStaples.find(s => s.kind === 'always' && s.item_name.toLowerCase() === name.toLowerCase());
   if (!staple) return;
   if (!confirm(`Remove "${cap(name)}" from staples? It'll show up on shopping lists again.`)) return;
 
@@ -933,6 +1232,7 @@ function buildIngredientsHtml(targetServings) {
         <div class="ing-icon">${icon}</div>
         <div class="ing-text">
           ${scaledQty !== null ? `<span class="qty">${fmtQty(scaledQty, ing.unit)}</span> ` : ''}${escapeHtml(cap(ing.item))}${ing.notes ? `, ${escapeHtml(ing.notes)}` : ''}
+          <span class="chip ${ing.role || 'core'}" onclick="cycleRole('${ing.id}')" title="Tap to change: core / optional / swappable">${ing.role || 'core'}</span>
         </div>
       </div>
     `;
@@ -1344,6 +1644,7 @@ function renderReceipt(data, aiCleaned) {
               <span class="item-name">${escapeHtml(cap(item.item))}</span>
               <span class="used-in">${item.usedIn.map(escapeHtml).join(', ')}</span>
               ${item.note ? `<span class="note">${escapeHtml(item.note)}</span>` : ''}
+              ${item.have ? `<span class="note">You have ${escapeHtml(String(item.have))}</span>` : ''}
             </span>
             <span class="qty">${item.quantity !== null ? fmtQty(item.quantity, item.unit) : ''}</span>
             <span class="item-actions">
@@ -1368,6 +1669,15 @@ function renderReceipt(data, aiCleaned) {
       </div>`
     : '';
 
+  const wantItems = allStaples.filter(i => i.kind === 'want');
+  const extrasHtml = wantItems.length
+    ? `<div class="staples-section">
+        <div class="staples-title">➕ Extras for this order (${wantItems.length})</div>
+        <div class="staples-hint">Added from What can I make. Tap × once bought.</div>
+        ${wantItems.map(w => `<div class="staples-item"><span>${escapeHtml(cap(w.item_name))}</span><button class="staples-remove-btn" onclick="removeWanted('${w.id}')" title="Remove">&times;</button></div>`).join('')}
+      </div>`
+    : '';
+
   document.getElementById('receiptWrap').innerHTML = `
     <div class="receipt">
       <div class="receipt-header">
@@ -1376,6 +1686,7 @@ function renderReceipt(data, aiCleaned) {
       </div>
       <div class="receipt-divider"></div>
       ${categoryHtml || '<div class="empty">Nothing left to buy — you have it all!</div>'}
+      ${extrasHtml}
       ${staplesHtml}
     </div>
   `;
