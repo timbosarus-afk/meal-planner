@@ -5,6 +5,7 @@
 
 const { supabase } = require('../lib/db');
 const reparseIngredients = require('../lib/reparse-ingredients');
+const { canMake, setRole } = require('../lib/can-make');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,6 +20,19 @@ module.exports = async (req, res) => {
 
   // Maintenance tool: GET previews, POST applies (see lib/reparse-ingredients.js)
   if (req.query && req.query.action === 'reparse') return reparseIngredients(req, res);
+
+  const action = req.query && req.query.action;
+  try {
+    if (action === 'can-make' && req.method === 'GET') return res.status(200).json(await canMake());
+    if (action === 'set-role' && req.method === 'POST') {
+      const { ingredientId, role } = req.body || {};
+      if (!ingredientId || !['core', 'optional', 'swappable'].includes(role)) return res.status(400).json({ error: 'Need ingredientId and role (core, optional or swappable)' });
+      return res.status(200).json(await setRole(ingredientId, role));
+    }
+  } catch (err) {
+    console.error('recipes action failed:', err);
+    return res.status(500).json({ error: err.message });
+  }
 
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Use GET' });
