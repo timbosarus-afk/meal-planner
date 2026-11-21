@@ -30,3 +30,5 @@ export const api = {
   settings: () => call('/api/settings'),
   setSetting: (key, value) => call('/api/settings', { method: 'PUT', body: { key, value } })
 };
+
+api.deleteWeek = id => call(`/api/weekly-plans?id=${id}`, { method: 'DELETE' });

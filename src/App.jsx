@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import BottomBar from './components/BottomBar.jsx';
 import { PrefsProvider, usePrefs } from './lib/prefs.jsx';
+import { WeeksProvider } from './lib/weeks.jsx';
 import { NavContext } from './lib/nav.js';
 import ThisWeek from './pages/ThisWeek.jsx';
 import Recipes from './pages/Recipes.jsx';
@@ -51,5 +52,5 @@ function Shell() {
 }
 
 export default function App() {
-  return <PrefsProvider><Shell /></PrefsProvider>;
+  return <PrefsProvider><WeeksProvider><Shell /></WeeksProvider></PrefsProvider>;
 }

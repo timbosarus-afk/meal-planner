@@ -8,7 +8,7 @@ const { supabase } = require('../lib/db');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -25,6 +25,17 @@ module.exports = async (req, res) => {
 
     if (error) { res.status(500).json({ error: error.message }); return; }
     res.status(200).json(data);
+    return;
+  }
+
+  // DELETE ?id=<planId> removes a week. weekly_plan_recipes, weekly_plan_exclusions
+  // and shopping_list_items cascade; recipes themselves are untouched.
+  if (req.method === 'DELETE') {
+    const id = (req.query && req.query.id) || (req.body && req.body.id);
+    if (!id) { res.status(400).json({ error: 'Missing "id"' }); return; }
+    const { error } = await supabase.from('weekly_plans').delete().eq('id', id);
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ deleted: id });
     return;
   }
 
@@ -70,5 +81,5 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(405).json({ error: 'Use GET or POST' });
+  res.status(405).json({ error: 'Use GET, POST or DELETE' });
 };

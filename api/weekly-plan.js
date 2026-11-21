@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
 
       const { data: planRecipes, error: prError } = await supabase
         .from('weekly_plan_recipes')
-        .select('recipe_id, servings_override, recipes(id, title, nickname, servings, source_url, steps, cook_time_minutes, image_url)')
+        .select('recipe_id, servings_override, recipes(id, title, nickname, servings, source_url, steps, prep_time_minutes, cook_time_minutes, image_url, rating, cuisine, tags, last_cooked, source)')
         .eq('weekly_plan_id', id);
       if (prError) throw new Error(prError.message);
 
