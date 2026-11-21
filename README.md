@@ -47,3 +47,24 @@ Known-good test URLs (static HTML, JSON-LD path):
 
 Known-bad test URL (JS-rendered SPA, will return `needsBrowser: true`):
 - https://www.sainsburys.co.uk/gol-ui/recipes/fish-finger-tacos
+
+## Data Claude writes (via the Supabase connector)
+| Table | What the app does with it |
+|---|---|
+| `recipes` (+ `recipe_ingredients`) | Recipes list/page. Uses `rating`, `rating_notes`, `cuisine`, `tags` (`lunch-friendly` is highlighted), `last_cooked`, `source` |
+| `weekly_plans` / `weekly_plan_recipes` | This Week. `servings_override - servings_target` = extra lunch portions. `status`: `planning` → `sent` (Send to Sainsbury's) → `ordered` (extension finished) |
+| `shopping_list_items` | Claude's curated list for a week; when present it replaces the generated list. `section` groups, `position` orders, `pack_note` shows under the item, `checked` is ticked in the app |
+| `pantry_items` | Pantry page and What can I make? (`kind`: `stock` / `always` / `want`) |
+| `product_links` | Written by the extension when a product is added to the basket: real Sainsbury's products and pack sizes |
+| `meal_preferences` | Claude only; not shown in the app |
+
+## Planning reminder
+- Edge function `supabase/functions/meal-planning-reminder` (deployed, `verify_jwt` off), called every 15 min by
+  pg_cron job `meal-planning-reminder` (`db/2026-11-21-meal-reminders.sql`)
+- Reuses the project's `VAPID_*` edge function secrets (shared with the BlizzCon app)
+- Settings in `app_settings`: `meal_reminder_enabled`, `meal_reminder_days`, `meal_reminder_time`, `meal_reminder_tz`
+- iPhone: push only works from the Home Screen app (iOS 16.4+)
+
+## Cook Timer shortcut (iPhone)
+Create a Shortcut named **Cook Timer**: *Receive Text input* → *Start Timer for (Shortcut Input) minutes*.
+The cook mode timer button opens `shortcuts://run-shortcut?name=Cook%20Timer&input=text&text=<minutes>`.
