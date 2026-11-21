@@ -13,6 +13,9 @@ import More from './pages/More.jsx';
 
 const PAGES = { week: ThisWeek, recipes: Recipes, shopping: Shopping, pantry: Pantry, canmake: CanMake, settings: Settings, more: More };
 import { SCREENS } from './lib/screens.js';
+import RecipeDetail from './pages/RecipeDetail.jsx';
+
+SCREENS.recipe = RecipeDetail;
 
 function Shell() {
   const { bar } = usePrefs();

@@ -2,7 +2,7 @@
 // detail: ingredients, steps, image, timings. Powers the Recipes tab's
 // detail view, including live portion scaling (done client-side using
 // the original `servings` value returned here).
-// PATCH ?id=<recipeId> with { nickname } and/or { imageUrl } updates the
+// PATCH ?id=<recipeId> with { nickname, imageUrl, rating, ratingNotes, lastCooked } updates the
 // short display name and/or the photo — imageUrl is set after a direct
 // upload to Supabase Storage (see the recipe-images bucket) rather than
 // a scraped URL, so you can attach your own photo to a manually-imported
@@ -50,10 +50,18 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'PATCH') {
-    const { nickname, imageUrl } = req.body || {};
+    const { nickname, imageUrl, rating, ratingNotes, lastCooked } = req.body || {};
     const updates = {};
     if (nickname !== undefined) updates.nickname = nickname ? nickname.trim() : null;
     if (imageUrl !== undefined) updates.image_url = imageUrl;
+    if (rating !== undefined) {
+      const r = rating === null ? null : Math.round(Number(rating));
+      if (r !== null && !(r >= 1 && r <= 5)) { res.status(400).json({ error: 'rating must be 1-5 or null' }); return; }
+      updates.rating = r;
+    }
+    if (ratingNotes !== undefined) updates.rating_notes = ratingNotes ? String(ratingNotes).trim() : null;
+    if (lastCooked !== undefined) updates.last_cooked = lastCooked || null; // 'YYYY-MM-DD'
+    if (!Object.keys(updates).length) { res.status(400).json({ error: 'Nothing to update' }); return; }
 
     const { data, error } = await supabase
       .from('recipes')

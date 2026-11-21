@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
 
   const { data, error } = await supabase
     .from('recipes')
-    .select('id, title, nickname, source_url, servings, prep_time_minutes, cook_time_minutes, image_url, created_at')
+    .select('id, title, nickname, source_url, servings, prep_time_minutes, cook_time_minutes, image_url, created_at, rating, cuisine, tags, last_cooked, source')
     .order('created_at', { ascending: false });
 
   if (error) {

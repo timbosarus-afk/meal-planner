@@ -32,3 +32,4 @@ export const api = {
 };
 
 api.deleteWeek = id => call(`/api/weekly-plans?id=${id}`, { method: 'DELETE' });
+api.deleteRecipe = id => call(`/api/recipe?id=${id}`, { method: 'DELETE' });
