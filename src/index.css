@@ -56,3 +56,4 @@ button { -webkit-tap-highlight-color: transparent; }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 @keyframes pulse { 50% { opacity: .65; } }
+.capitalize-first::first-letter { text-transform: uppercase; }
