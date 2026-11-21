@@ -1,3 +1,6 @@
+// v0.6: weeks (weekly_plans). A week sent from the phone is preselected; a
+// finished basket run marks it ordered. Adding a product yourself auto-links it.
+//
 // v0.5: batch-based. Pick a batch, see which items are linked to a known
 // Sainsbury's product (ready to add) and which still need linking.
 //
@@ -57,10 +60,14 @@ async function loadBatches() {
 
     const { selectedBatchId } = await chrome.storage.local.get('selectedBatchId');
     batchSelect.innerHTML = batches.map(b => {
-      const d = new Date(b.week_start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      return `<option value="${b.id}">${escapeHtml(d)} · ${escapeHtml(b.status)} · ${b.servings_target} servings</option>`;
+      const d = new Date(b.week_start_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      const st = b.status === 'sent' ? '📲 sent from phone' : b.status;
+      return `<option value="${b.id}">${escapeHtml(d)} · ${escapeHtml(st)}</option>`;
     }).join('');
-    batchSelect.value = batches.some(b => b.id === selectedBatchId) ? selectedBatchId : batches[0].id;
+    // A week sent from the phone ("Send to Sainsbury's") wins; else last pick
+    const sent = batches.find(b => b.status === 'sent');
+    batchSelect.value = sent ? sent.id : (batches.some(b => b.id === selectedBatchId) ? selectedBatchId : batches[0].id);
+    if (sent) await chrome.storage.local.set({ selectedBatchId: sent.id });
     loadList();
   } catch (err) {
     statusEl.textContent = `Could not reach the API: ${err.message}`;

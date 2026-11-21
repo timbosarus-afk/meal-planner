@@ -1,7 +1,8 @@
 // Vercel serverless function — ingredient -> Sainsbury's product links.
 // GET                      -> all links (optionally ?key=red%20onion for one)
 // POST { ingredientName | ingredientKey, productUrl, productName,
-//        packSize, packUnit, defaultQty }  -> create or replace the link
+//        packSize, packUnit, defaultQty, markUsed? }  -> create or replace the link
+//        (markUsed: true also stamps last_used_at; sent when added to basket)
 // PATCH { ids: [...] }     -> stamp last_used_at (called after a basket run)
 // DELETE { id }            -> remove a link (re-link from scratch)
 
@@ -43,7 +44,7 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    const { ingredientName, ingredientKey: givenKey, productUrl, productName, packSize, packUnit, defaultQty } = req.body || {};
+    const { ingredientName, ingredientKey: givenKey, productUrl, productName, packSize, packUnit, defaultQty, markUsed } = req.body || {};
     const key = ingredientKey(givenKey || ingredientName);
     if (!key) { res.status(400).json({ error: 'Missing "ingredientName" or "ingredientKey"' }); return; }
 
@@ -60,6 +61,8 @@ module.exports = async (req, res) => {
       pack_unit: allowedUnits.includes(packUnit) ? packUnit : null,
       default_qty: Math.max(1, parseInt(defaultQty, 10) || 1)
     };
+    // Sent by the extension when the product was just added to the basket
+    if (markUsed) row.last_used_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('product_links')

@@ -176,6 +176,12 @@
     const other = run.results.length - done;
     showRunBanner(`Done: ${done} added${other ? `, ${other} need a look (open the extension)` : ''}`);
 
+    if (run.apiUrl && run.batchId && done) {
+      fetch(`${run.apiUrl}/api/weekly-plan-shopping-list?id=${encodeURIComponent(run.batchId)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ordered' })
+      }).catch(() => {});
+    }
+
     const usedIds = run.results.filter(r => r.status === 'added' || r.status === 'partial').map(r => r.linkId);
     if (run.apiUrl && usedIds.length) {
       fetch(`${run.apiUrl}/api/product-links`, {
@@ -230,8 +236,8 @@
     const { apiUrl, unlinkedKeys = [], linkingKey, linkPanelCollapsed } = await chrome.storage.local.get(['apiUrl', 'unlinkedKeys', 'linkingKey', 'linkPanelCollapsed']);
     if (!apiUrl) return;
 
-    const name = productName();
-    const pack = guessPack(name);
+    const name = productSlug() ? productName() : 'Click Add on the product you want';
+    const pack = productSlug() ? guessPack(name) : { size: 1, unit: 'each' };
     const slug = productSlug();
 
     const panel = document.createElement('div');
@@ -305,9 +311,13 @@
       await chrome.storage.local.set({ linkPanelCollapsed: c });
     };
 
-    save.onclick = async () => {
+    const doSave = async ({ markUsed = false, productUrl = location.href, productName: pName = name, packSize, packUnit } = {}) => {
       const ingredientName = ingInput.value.trim();
-      if (!ingredientName) { status.textContent = 'Pick or type an ingredient first.'; return; }
+      if (!ingredientName) {
+        status.style.color = '#6B7566';
+        status.textContent = markUsed ? 'Added. Pick an ingredient above to remember this product.' : 'Pick or type an ingredient first.';
+        return;
+      }
       save.disabled = true;
       status.textContent = 'Saving…';
       try {
@@ -316,11 +326,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ingredientName,
-            productUrl: location.href,
-            productName: name,
-            packSize: panel.querySelector('#mp-pack-size').value,
-            packUnit: panel.querySelector('#mp-pack-unit').value,
-            defaultQty: panel.querySelector('#mp-default-qty').value
+            productUrl,
+            productName: pName,
+            packSize: packSize ?? panel.querySelector('#mp-pack-size').value,
+            packUnit: packUnit ?? panel.querySelector('#mp-pack-unit').value,
+            defaultQty: panel.querySelector('#mp-default-qty').value,
+            markUsed
           })
         });
         const data = await res.json();
@@ -332,7 +343,7 @@
           linkingKey: null
         });
         status.style.color = '#1B4D3E';
-        status.textContent = `✓ Linked to "${data.ingredient_key}"`;
+        status.textContent = markUsed ? `✓ Added and linked to "${data.ingredient_key}"` : `✓ Linked to "${data.ingredient_key}"`;
       } catch (err) {
         status.style.color = '#B3261E';
         status.textContent = err.message;
@@ -340,7 +351,42 @@
         save.disabled = false;
       }
     };
+    save.onclick = () => doSave();
+    panelSave = doSave;
   }
+
+  // ---- Auto-link on "Add" ---------------------------------------------------
+  // When you add a product to the basket yourself (not during a basket run),
+  // upsert it into product_links with its pack size and last_used_at, so
+  // Claude knows the real products and pack sizes you buy. Works on product
+  // pages and on search-result tiles (e.g. after "Find" from the popup).
+  let panelSave = null;
+
+  function tileProduct(btn) {
+    let el = btn;
+    for (let i = 0; i < 8 && el; i++, el = el.parentElement) {
+      const a = el.querySelector && el.querySelector('a[href*="/gol-ui/product/"]');
+      if (a) {
+        const tileName = (a.getAttribute('aria-label') || a.textContent || '').trim();
+        return { productUrl: a.href, productName: tileName };
+      }
+    }
+    return null;
+  }
+
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest && e.target.closest(ADD_SELECTORS.join(','));
+    if (!btn || !panelSave) return;
+    if (await getRun()) return; // basket runs stamp last_used_at themselves
+    if (productSlug() && buyBox().contains(btn)) {
+      setTimeout(() => panelSave({ markUsed: true }), 300);
+    } else {
+      const tile = tileProduct(btn);
+      if (!tile) return;
+      const p = guessPack(tile.productName);
+      setTimeout(() => panelSave({ markUsed: true, productUrl: tile.productUrl, productName: tile.productName, packSize: p.size, packUnit: p.unit }), 300);
+    }
+  }, true);
 
   // ---- Routing (SPA-aware) ------------------------------------------------
 
@@ -355,8 +401,9 @@
       // Wait for the SPA to render something product-ish before acting
       await sleep(800);
       if (await handleRun()) { removePanel(); return; }
-      if (productSlug()) await showLinkPanel();
-      else removePanel();
+      const { linkingKey } = await chrome.storage.local.get('linkingKey');
+      if (productSlug() || (linkingKey && /\/gol-ui\/SearchResults\//.test(location.pathname))) await showLinkPanel();
+      else { removePanel(); panelSave = null; }
     } finally {
       busy = false;
       if (pending) { pending = false; onRoute(); }
