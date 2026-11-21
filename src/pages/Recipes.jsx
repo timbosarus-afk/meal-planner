@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Star, BookOpen, X } from 'lucide-react';
 import { PageHeader, Spinner, ErrorBox, Empty, useLoad } from '../components/ui.jsx';
 import RecipeThumb from '../components/RecipeThumb.jsx';
@@ -11,6 +11,7 @@ const SORTS = { recent: 'Newest', rating: 'Top rated', az: 'A–Z' };
 export default function Recipes() {
   const { push } = useNav();
   const list = useLoad(() => api.recipes(), []);
+  useEffect(() => { const r = () => list.reload(); window.addEventListener('recipe-updated', r); return () => window.removeEventListener('recipe-updated', r); }, [list.reload]);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState(null);
   const [sort, setSort] = useState('recent');

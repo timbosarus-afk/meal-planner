@@ -15,7 +15,10 @@ const PAGES = { week: ThisWeek, recipes: Recipes, shopping: Shopping, pantry: Pa
 import { SCREENS } from './lib/screens.js';
 import RecipeDetail from './pages/RecipeDetail.jsx';
 
+import CookMode from './pages/CookMode.jsx';
+
 SCREENS.recipe = RecipeDetail;
+SCREENS.cook = CookMode;
 
 function Shell() {
   const { bar } = usePrefs();

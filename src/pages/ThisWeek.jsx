@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Sandwich, CheckCircle2, Trash2, CalendarX2, Star } from 'lucide-react';
 import { PageHeader, Spinner, ErrorBox, Empty, useLoad } from '../components/ui.jsx';
 import WeekSelect from '../components/WeekSelect.jsx';
@@ -14,7 +14,9 @@ export const extraLunch = (r, plan) => r.servingsOverride && plan ? Math.max(0, 
 
 function MealCard({ recipe, plan, onOpen }) {
   const lunch = extraLunch(recipe, plan);
-  const cooked = recipe.last_cooked && recipe.last_cooked >= plan.week_start_date;
+  // Cooked since the plan was made (or since the week started, if earlier)
+  const since = [plan.week_start_date, (plan.created_at || '').slice(0, 10)].filter(Boolean).sort()[0];
+  const cooked = recipe.last_cooked && recipe.last_cooked >= since;
   const mins = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
   return (
     <button onClick={onOpen} className="card w-full text-left flex gap-3 p-3 active:scale-[0.99] transition-transform">
@@ -40,6 +42,7 @@ export default function ThisWeek() {
   const { push } = useNav();
   const plan = useLoad(() => (selected ? api.week(selected.id) : Promise.resolve(null)), [selected && selected.id]);
   const [confirm, setConfirm] = useState(false);
+  useEffect(() => { const r = () => plan.reload(); window.addEventListener('recipe-updated', r); return () => window.removeEventListener('recipe-updated', r); }, [plan.reload]);
   const [busy, setBusy] = useState(false);
 
   const current = pickCurrentWeek(weeks);

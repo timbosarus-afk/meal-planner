@@ -135,7 +135,7 @@ export default function RecipeDetail({ id, servings: initialServings }) {
 
       {tab === 'ingredients'
         ? <Ingredients recipe={r} target={serves} />
-        : <CookSteps recipe={r} steps={getSteps(r)} onFinished={patch => rec.setData(d => ({ ...d, ...patch }))} />}
+        : <CookSteps recipe={r} steps={getSteps(r)} />}
 
       <section className="card p-4 mt-6">
         <div className="flex items-center gap-2 mb-1"><ChefHat size={18} style={{ color: 'var(--green)' }} /><span className="font-display font-bold text-[17px]">Your rating</span></div>

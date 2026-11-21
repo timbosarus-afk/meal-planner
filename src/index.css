@@ -55,3 +55,4 @@ button { -webkit-tap-highlight-color: transparent; }
 @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+@keyframes pulse { 50% { opacity: .65; } }
