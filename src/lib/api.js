@@ -33,3 +33,5 @@ export const api = {
 
 api.deleteWeek = id => call(`/api/weekly-plans?id=${id}`, { method: 'DELETE' });
 api.deleteRecipe = id => call(`/api/recipe?id=${id}`, { method: 'DELETE' });
+api.checkItem = (planId, itemId, checked) => call(`/api/weekly-plan-shopping-list?id=${planId}`, { method: 'PATCH', body: { itemId, checked } });
+api.sendToShop = planId => call(`/api/weekly-plan-shopping-list?id=${planId}`, { method: 'POST', body: { action: 'send' } });

@@ -31,12 +31,20 @@
 // Items still needing a link come back in `unlinked`. "Got it" items are left
 // out of both — you already have them.
 
+// Curated lists (Nov 2026): when Claude has written rows to
+// `shopping_list_items` for this week, those are returned instead of the
+// generated list (`curated: true`). Same response shape, so the extension
+// works with either. Lines carry `id` so ticks can be saved:
+//   PATCH ?id=<planId> { itemId, checked }  -> tick/untick a curated line
+//   POST  ?id=<planId> { action: 'send' }   -> mark the week ready for the
+//         Sainsbury's extension (weekly_plans.status = 'sent')
+
 const { supabase } = require('../lib/db');
 const { ingredientKey, packsNeeded } = require('../lib/ingredient-key');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -69,13 +77,68 @@ function categorise(itemName) {
   return 'Other';
 }
 
+function buildBasket(shoppingList, linkByKey) {
+  // Group still-needed items by ingredient key: linked keys become basket
+  // entries (packs summed across all matching lines), the rest are unlinked.
+  const byKey = {};
+  for (const it of shoppingList) {
+    if (it.gotIt || !it.ingredientKey) continue;
+    (byKey[it.ingredientKey] ||= []).push(it);
+  }
+
+  const basket = [];
+  const unlinked = [];
+  for (const [iKey, items] of Object.entries(byKey)) {
+    const link = linkByKey[iKey];
+    if (link) {
+      basket.push({
+        linkId: link.id,
+        ingredientKey: iKey,
+        productUrl: link.product_url,
+        productSlug: link.product_slug,
+        productName: link.product_name,
+        packSize: link.pack_size,
+        packUnit: link.pack_unit,
+        packs: packsNeeded(items.map(i => ({ quantity: i.quantity, unit: i.unit })), link),
+        items: items.map(i => i.item)
+      });
+    } else {
+      unlinked.push({ ingredientKey: iKey, items: items.map(i => i.item) });
+    }
+  }
+  basket.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
+  unlinked.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
+
+  return { basket, unlinked };
+}
+
 module.exports = async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'GET') { res.status(405).json({ error: 'Use GET' }); return; }
-
   const { id: planId } = req.query;
   if (!planId) { res.status(400).json({ error: 'Missing "id" query param' }); return; }
+
+  if (req.method === 'PATCH') {
+    const { itemId, checked } = req.body || {};
+    if (!itemId) { res.status(400).json({ error: 'Missing "itemId"' }); return; }
+    const { data, error } = await supabase.from('shopping_list_items')
+      .update({ checked: !!checked }).eq('id', itemId).eq('weekly_plan_id', planId).select().single();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json(data);
+    return;
+  }
+
+  if (req.method === 'POST') {
+    const { action } = req.body || {};
+    if (action !== 'send' && action !== 'ordered') { res.status(400).json({ error: 'action must be "send" or "ordered"' }); return; }
+    const { data, error } = await supabase.from('weekly_plans')
+      .update({ status: action === 'send' ? 'sent' : 'ordered' }).eq('id', planId).select().single();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json(data);
+    return;
+  }
+
+  if (req.method !== 'GET') { res.status(405).json({ error: 'Use GET, PATCH or POST' }); return; }
 
   try {
     const { data: plan, error: planError } = await supabase
@@ -109,6 +172,29 @@ module.exports = async (req, res) => {
     if (linksError) console.error('product_links lookup failed:', linksError.message);
 
     const linkByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
+
+    const { data: curatedRows, error: curError } = await supabase
+      .from('shopping_list_items').select('*').eq('weekly_plan_id', planId).order('position').order('created_at');
+    if (curError) console.error('shopping_list_items lookup failed:', curError.message);
+    if (curatedRows && curatedRows.length) {
+      const stockKeys = Object.fromEntries(staples.filter(s => s.kind === 'stock').map(s => [s.ingredient_key, s]));
+      const list = curatedRows.map(r => {
+        const iKey = ingredientKey(r.item) || r.item.toLowerCase();
+        const st = stockKeys[iKey];
+        return {
+          id: r.id, item: r.item, quantity: r.quantity, unit: r.unit, note: r.pack_note,
+          category: r.section || categorise(r.item), position: r.position, usedIn: [],
+          gotIt: r.checked, ingredientKey: iKey, linked: !!linkByKey[iKey], source: r.source,
+          ...(st ? { have: st.quantity != null ? `${st.quantity}${st.unit ? ' ' + st.unit : ''}` : 'in pantry' } : {})
+        };
+      });
+      const { basket, unlinked } = buildBasket(list, linkByKey);
+      res.status(200).json({
+        planId, curated: true, servingsTarget: plan.servings_target, status: plan.status,
+        recipeCount: planRecipes.length, shoppingList: list, staples: [], basket, unlinked
+      });
+      return;
+    }
 
     const stapleNames = staples.filter(s => s.kind === 'always').map(s => s.item_name.toLowerCase());
     const stockByKey = Object.fromEntries(staples.filter(s => s.kind === 'stock').map(s => [s.ingredient_key, s]));
@@ -180,36 +266,7 @@ module.exports = async (req, res) => {
       })
       .sort((a, b) => a.category.localeCompare(b.category) || a.item.localeCompare(b.item));
 
-    // Group still-needed items by ingredient key: linked keys become basket
-    // entries (packs summed across all matching lines), the rest are unlinked.
-    const byKey = {};
-    for (const it of shoppingList) {
-      if (it.gotIt || !it.ingredientKey) continue;
-      (byKey[it.ingredientKey] ||= []).push(it);
-    }
-
-    const basket = [];
-    const unlinked = [];
-    for (const [iKey, items] of Object.entries(byKey)) {
-      const link = linkByKey[iKey];
-      if (link) {
-        basket.push({
-          linkId: link.id,
-          ingredientKey: iKey,
-          productUrl: link.product_url,
-          productSlug: link.product_slug,
-          productName: link.product_name,
-          packSize: link.pack_size,
-          packUnit: link.pack_unit,
-          packs: packsNeeded(items.map(i => ({ quantity: i.quantity, unit: i.unit })), link),
-          items: items.map(i => i.item)
-        });
-      } else {
-        unlinked.push({ ingredientKey: iKey, items: items.map(i => i.item) });
-      }
-    }
-    basket.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
-    unlinked.sort((a, b) => a.ingredientKey.localeCompare(b.ingredientKey));
+    const { basket, unlinked } = buildBasket(shoppingList, linkByKey);
 
     // Hint lines for things already in the fridge/freezer/cupboard
     for (const line of shoppingList) {
@@ -219,6 +276,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({
       planId,
+      curated: false,
       servingsTarget: plan.servings_target,
       status: plan.status,
       recipeCount: planRecipes.length,
