@@ -35,3 +35,8 @@ export function pickCurrentWeek(weeks) {
   const sorted = [...weeks].sort((a, b) => b.week_start_date.localeCompare(a.week_start_date));
   return sorted.find(w => w.week_start_date <= iso) || sorted[sorted.length - 1];
 }
+
+export const money = n => (n === null || n === undefined ? '' : `£${Number(n).toFixed(2)}`);
+// "~£6.10 · £2.03 a serving" (approximate: what the meal uses, not till price)
+export const costLine = (c, approx = true) => (c && c.total > 0 ? `${approx ? '~' : ''}${money(c.total)}${c.perServing != null ? ` · ${money(c.perServing)} a serving` : ''}` : null);
+export const notPricedText = n => (n > 0 ? `${n} item${n === 1 ? '' : 's'} not priced` : null);

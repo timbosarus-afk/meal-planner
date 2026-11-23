@@ -8,7 +8,7 @@ import Sheet, { ConfirmSheet } from '../components/Sheet.jsx';
 import CookSteps from './CookSteps.jsx';
 import { api } from '../lib/api.js';
 import { useNav } from '../lib/nav.js';
-import { displayName, fmtQty } from '../lib/format.js';
+import { displayName, fmtQty, costLine, notPricedText } from '../lib/format.js';
 import { googleImagesUrl, scaleQty, steps as getSteps, uploadRecipePhoto, fmtCookedDate } from '../lib/recipe.js';
 
 const ROLE_LABEL = { optional: 'optional', swappable: 'swappable' };
@@ -128,6 +128,17 @@ export default function RecipeDetail({ id, servings: initialServings }) {
           <button aria-label="More servings" className="w-8 h-8 rounded-full flex items-center justify-center btn-soft" onClick={() => setTarget(serves + 1)}><Plus size={15} /></button>
         </span>
       </div>
+
+      {r.cost && (r.cost.total > 0 || r.cost.notPriced > 0) && (() => {
+        // Total scales with the servings stepper; per serving stays the same
+        const scaled = { ...r.cost, total: r.cost.servings ? Math.round(r.cost.total * serves / r.cost.servings * 100) / 100 : r.cost.total };
+        return (
+          <div className="flex items-center gap-2 -mt-2 mb-4 px-1 text-[14px]" style={{ color: 'var(--text-soft)' }}>
+            {costLine(scaled) && <span className="font-semibold" style={{ color: 'var(--green)' }}>{costLine(scaled)}</span>}
+            {r.cost.notPriced > 0 && <span>{costLine(scaled) ? '· ' : ''}{notPricedText(r.cost.notPriced)}</span>}
+          </div>
+        );
+      })()}
 
       <div className="mb-4">
         <Segmented value={tab} onChange={setTab} options={[{ value: 'ingredients', label: 'Ingredients', icon: ListChecks }, { value: 'cook', label: 'How to Cook', icon: CookingPot }]} />

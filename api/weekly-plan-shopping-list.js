@@ -41,6 +41,7 @@
 
 const { supabase } = require('../lib/db');
 const { ingredientKey, packsNeeded } = require('../lib/ingredient-key');
+const { alwaysMatcher, weekCost, weekServings } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -196,7 +197,8 @@ module.exports = async (req, res) => {
       const { basket, unlinked } = buildBasket(list, linkByKey);
       res.status(200).json({
         planId, curated: true, servingsTarget: plan.servings_target, status: plan.status,
-        recipeCount: planRecipes.length, shoppingList: list, staples: [], basket, unlinked
+        recipeCount: planRecipes.length, shoppingList: list, staples: [], basket, unlinked,
+        costs: weekCost({ basket, unlinked, servings: weekServings(planRecipes, plan.servings_target) })
       });
       return;
     }
@@ -210,13 +212,8 @@ module.exports = async (req, res) => {
     // sheets". A staple key also matches as a whole word inside a longer
     // item ("salt" covers "salt and pepper") but never mid-word ("salt"
     // must not catch "unsalted butter").
-    const escapeRe = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const stapleKeys = [...new Set(stapleNames.map(n => ingredientKey(n)).filter(Boolean))];
-    const stapleRes = stapleKeys.map(k => new RegExp(`(^|[^a-z])${escapeRe(k)}([^a-z]|$)`));
-    const isStaple = (itemName) => {
-      const key = ingredientKey(itemName);
-      return stapleKeys.includes(key) || stapleRes.some(re => re.test(key));
-    };
+    // Whole-word match on the normalised key (lib/costs.js alwaysMatcher)
+    const isStaple = alwaysMatcher(stapleNames);
 
     const recipeById = Object.fromEntries(planRecipes.map(pr => [pr.recipe_id, { ...pr.recipes, servingsOverride: pr.servings_override }]));
     const displayName = (recipe) => (recipe?.nickname && recipe.nickname.trim()) ? recipe.nickname : (recipe?.title || 'Unknown recipe');
@@ -288,7 +285,9 @@ module.exports = async (req, res) => {
       shoppingList,
       staples: [...stapleItems].sort(),
       basket,
-      unlinked
+      unlinked,
+      // What you pay at the till (whole packs); see lib/costs.js
+      costs: weekCost({ basket, unlinked, servings: weekServings(planRecipes, plan.servings_target) })
     });
   } catch (err) {
     console.error('Failed to build plan shopping list:', err);

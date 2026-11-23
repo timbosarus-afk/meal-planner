@@ -13,6 +13,7 @@
 // way and there's no separate "in use" check needed here).
 
 const { supabase } = require('../lib/db');
+const { alwaysMatcher, recipeCost } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,7 +42,21 @@ module.exports = async (req, res) => {
         .order('position');
       if (ingError) throw new Error(ingError.message);
 
-      res.status(200).json({ ...recipe, ingredients });
+      // Cost at the recipe's own servings (the app scales the total with its
+      // servings stepper; per serving doesn't change). Each ingredient also
+      // gets linked / alwaysHave flags for the "Not linked yet" list.
+      const [{ data: links }, { data: always }] = await Promise.all([
+        supabase.from('product_links').select('ingredient_key, pack_size, pack_unit, price, nectar_price'),
+        supabase.from('pantry_items').select('item_name').eq('kind', 'always')
+      ]);
+      const c = recipeCost({
+        ingredients,
+        linksByKey: Object.fromEntries((links || []).map(l => [l.ingredient_key, l])),
+        isAlways: alwaysMatcher((always || []).map(a => a.item_name)),
+        baseServings: recipe.servings, targetServings: recipe.servings
+      });
+      const withFlags = ingredients.map((i, k) => ({ ...i, ingredientKey: c.lines[k].key, linked: c.lines[k].linked, alwaysHave: c.lines[k].alwaysHave, cost: c.lines[k].cost }));
+      res.status(200).json({ ...recipe, ingredients: withFlags, cost: { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced } });
     } catch (err) {
       console.error('Failed to load recipe detail:', err);
       res.status(500).json({ error: err.message });

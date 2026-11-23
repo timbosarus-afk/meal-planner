@@ -16,6 +16,7 @@
 // is already 'ordered' — this endpoint just performs the removal.
 
 const { supabase } = require('../lib/db');
+const { alwaysMatcher, recipeCost } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -46,15 +47,28 @@ module.exports = async (req, res) => {
       const recipeIds = planRecipes.map(pr => pr.recipe_id);
       const { data: ingredients, error: ingError } = await supabase
         .from('recipe_ingredients')
-        .select('recipe_id, quantity, unit, item, notes')
+        .select('id, recipe_id, quantity, unit, item, notes')
         .in('recipe_id', recipeIds.length ? recipeIds : ['00000000-0000-0000-0000-000000000000']);
       if (ingError) throw new Error(ingError.message);
 
-      const recipes = planRecipes.map(pr => ({
-        ...pr.recipes,
-        servingsOverride: pr.servings_override,
-        ingredients: ingredients.filter(i => i.recipe_id === pr.recipe_id)
-      }));
+      // "What it uses" cost per meal at the servings being cooked
+      const [{ data: links }, { data: always }] = await Promise.all([
+        supabase.from('product_links').select('ingredient_key, pack_size, pack_unit, price, nectar_price'),
+        supabase.from('pantry_items').select('item_name').eq('kind', 'always')
+      ]);
+      const linksByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
+      const isAlways = alwaysMatcher((always || []).map(a => a.item_name));
+
+      const recipes = planRecipes.map(pr => {
+        const ings = ingredients.filter(i => i.recipe_id === pr.recipe_id);
+        const c = recipeCost({ ingredients: ings, linksByKey, isAlways, baseServings: pr.recipes?.servings, targetServings: pr.servings_override || plan.servings_target });
+        return {
+          ...pr.recipes,
+          servingsOverride: pr.servings_override,
+          ingredients: ings,
+          cost: { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced }
+        };
+      });
 
       res.status(200).json({ ...plan, recipes });
     } catch (err) {
