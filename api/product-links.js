@@ -1,9 +1,14 @@
 // Vercel serverless function — ingredient -> Sainsbury's product links.
 // GET                      -> all links (optionally ?key=red%20onion for one)
 // POST { ingredientName | ingredientKey, productUrl, productName,
-//        packSize, packUnit, defaultQty, markUsed? }  -> create or replace the link
+//        packSize, packUnit, defaultQty, markUsed?, price?, nectarPrice? }
+//                          -> create or replace the link
 //        (markUsed: true also stamps last_used_at; sent when added to basket)
 // PATCH { ids: [...] }     -> stamp last_used_at (called after a basket run)
+// PATCH { prices: [{ slug, price, nectarPrice }] }
+//                          -> update saved prices for every link to that product
+//                             (from link time, basket runs, product page visits
+//                             and the panel's "Update prices")
 // DELETE { id }            -> remove a link (re-link from scratch)
 
 const { supabase } = require('../lib/db');
@@ -16,18 +21,26 @@ function setCors(res) {
   res.setHeader('Cache-Control', 'no-store');
 }
 
-// Accepts any Sainsbury's product URL and pulls out the slug, which is the
-// stable bit (query strings and tracking params get dropped).
+// Accepts any Sainsbury's product URL (old /gol-ui/ or current /groceries/)
+// and pulls out the slug, which is the stable bit. Stored in the /gol-ui/
+// form for consistency with existing rows; Sainsbury's redirects it.
 function parseProductUrl(url) {
   try {
     const u = new URL(url);
     if (!/(^|\.)sainsburys\.co\.uk$/.test(u.hostname)) return null;
-    const m = u.pathname.match(/\/gol-ui\/product\/([^/?#]+)/);
+    const m = u.pathname.match(/\/(?:gol-ui|groceries)\/product\/([^/?#]+)/);
     if (!m) return null;
     return { slug: m[1], cleanUrl: `https://www.sainsburys.co.uk/gol-ui/product/${m[1]}` };
   } catch {
     return null;
   }
+}
+
+// Money in pounds, 2dp, or null if missing/invalid
+function toPrice(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n < 10000 ? Math.round(n * 100) / 100 : null;
 }
 
 module.exports = async (req, res) => {
@@ -44,12 +57,12 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    const { ingredientName, ingredientKey: givenKey, productUrl, productName, packSize, packUnit, defaultQty, markUsed } = req.body || {};
+    const { ingredientName, ingredientKey: givenKey, productUrl, productName, packSize, packUnit, defaultQty, markUsed, price, nectarPrice } = req.body || {};
     const key = ingredientKey(givenKey || ingredientName);
     if (!key) { res.status(400).json({ error: 'Missing "ingredientName" or "ingredientKey"' }); return; }
 
     const parsed = parseProductUrl(productUrl);
-    if (!parsed) { res.status(400).json({ error: 'productUrl must be a sainsburys.co.uk /gol-ui/product/ URL' }); return; }
+    if (!parsed) { res.status(400).json({ error: 'productUrl must be a sainsburys.co.uk product URL' }); return; }
 
     const allowedUnits = ['g', 'ml', 'each'];
     const row = {
@@ -63,6 +76,15 @@ module.exports = async (req, res) => {
     };
     // Sent by the extension when the product was just added to the basket
     if (markUsed) row.last_used_at = new Date().toISOString();
+    // Only touch prices when the caller read one, so re-linking without a
+    // price doesn't wipe a good saved price
+    const p = toPrice(price);
+    const np = toPrice(nectarPrice);
+    if (p !== null || np !== null) {
+      row.price = p;
+      row.nectar_price = np;
+      row.price_updated_at = new Date().toISOString();
+    }
 
     const { data, error } = await supabase
       .from('product_links')
@@ -75,8 +97,29 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'PATCH') {
-    const { ids } = req.body || {};
-    if (!Array.isArray(ids) || !ids.length) { res.status(400).json({ error: 'Missing "ids" array' }); return; }
+    const { ids, prices } = req.body || {};
+
+    if (Array.isArray(prices)) {
+      const now = new Date().toISOString();
+      let updated = 0;
+      for (const item of prices.slice(0, 500)) {
+        const slug = typeof item?.slug === 'string' ? item.slug : null;
+        const p = toPrice(item?.price);
+        const np = toPrice(item?.nectarPrice);
+        if (!slug || (p === null && np === null)) continue;
+        const { data, error } = await supabase
+          .from('product_links')
+          .update({ price: p, nectar_price: np, price_updated_at: now })
+          .eq('product_slug', slug)
+          .select('id');
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        updated += (data || []).length;
+      }
+      res.status(200).json({ updated });
+      return;
+    }
+
+    if (!Array.isArray(ids) || !ids.length) { res.status(400).json({ error: 'Send "ids" or "prices"' }); return; }
     const { error } = await supabase
       .from('product_links')
       .update({ last_used_at: new Date().toISOString() })
