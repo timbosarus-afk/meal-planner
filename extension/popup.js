@@ -1,3 +1,7 @@
+// v0.7: Sainsbury's moved to /groceries/. Linking now happens in the side
+// panel on Sainsbury's itself ("Get next" / "Link this"); "Find" here still
+// works and opens the panel on that item.
+//
 // v0.6: weeks (weekly_plans). A week sent from the phone is preselected; a
 // finished basket run marks it ordered. Adding a product yourself auto-links it.
 //
@@ -7,9 +11,6 @@
 // "Add all to basket" hands a queue to product.js, which walks the shopping
 // tab through each product page, clicks Add and bumps the quantity. State
 // lives in chrome.storage.local, so the popup closing mid-run is fine.
-//
-// "Find" on an unlinked item opens Sainsbury's search for it and pre-fills
-// the link panel, so linking is: Find -> click the product you want -> Save.
 
 const $ = id => document.getElementById(id);
 const apiUrlInput = $('apiUrl');
@@ -38,6 +39,7 @@ apiUrlInput.addEventListener('change', async () => {
 
 // Reuse one dedicated shopping tab (same as v0.4)
 async function openInShoppingTab(url) {
+  url = String(url || '').replace('/gol-ui/product/', '/groceries/product/');
   const { shoppingTabId } = await chrome.storage.local.get('shoppingTabId');
   if (shoppingTabId) {
     try { await chrome.tabs.update(shoppingTabId, { url, active: true }); return; } catch { /* closed */ }
@@ -61,7 +63,7 @@ async function loadBatches() {
     const { selectedBatchId } = await chrome.storage.local.get('selectedBatchId');
     batchSelect.innerHTML = batches.map(b => {
       const d = new Date(b.week_start_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-      const st = b.status === 'sent' ? '📲 sent from phone' : b.status;
+      const st = b.status === 'sent' ? 'sent from phone' : b.status;
       return `<option value="${b.id}">${escapeHtml(d)} · ${escapeHtml(st)}</option>`;
     }).join('');
     // A week sent from the phone ("Send to Sainsbury's") wins; else last pick
@@ -127,7 +129,7 @@ function renderBasket(basket) {
 function renderUnlinked(unlinked) {
   $('unlinkedCount').textContent = unlinked.length ? `${unlinked.length}` : '';
   if (!unlinked.length) {
-    $('unlinkedList').innerHTML = '<div class="empty">Everything on this list is linked 🎉</div>';
+    $('unlinkedList').innerHTML = '<div class="empty">Everything on this list is linked.</div>';
     return;
   }
   $('unlinkedList').innerHTML = unlinked.map((u, i) => `
@@ -142,8 +144,8 @@ function renderUnlinked(unlinked) {
 
   $('unlinkedList').querySelectorAll('.find-btn').forEach(btn => btn.addEventListener('click', async () => {
     const key = unlinked[btn.dataset.idx].ingredientKey;
-    await chrome.storage.local.set({ linkingKey: key });
-    await openInShoppingTab(`https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(key)}`);
+    await chrome.storage.local.set({ linkingKey: key, selectedBatchId: batchSelect.value });
+    await openInShoppingTab(`https://www.sainsburys.co.uk/groceries/search?searchTerm=${encodeURIComponent(key)}`);
   }));
 
   $('unlinkedList').querySelectorAll('.staple-btn').forEach(btn => btn.addEventListener('click', async () => {
