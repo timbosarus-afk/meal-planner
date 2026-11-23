@@ -110,6 +110,11 @@ module.exports = async (req, res) => {
       .from('weekly_plans').update({ status }).eq('id', id).select().single();
 
     if (error) { res.status(500).json({ error: error.message }); return; }
+    // Ordered: clear the pantry check's "ran out" flags
+    if (status === 'ordered') {
+      const { error: e2 } = await supabase.from('pantry_items').update({ out_of_stock: false }).eq('out_of_stock', true);
+      if (e2) { res.status(500).json({ error: e2.message }); return; }
+    }
     res.status(200).json(data);
     return;
   }

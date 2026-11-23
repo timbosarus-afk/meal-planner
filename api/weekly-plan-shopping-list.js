@@ -38,6 +38,10 @@
 //   PATCH ?id=<planId> { itemId, checked }  -> tick/untick a curated line
 //   POST  ?id=<planId> { action: 'send' }   -> mark the week ready for the
 //         Sainsbury's extension (weekly_plans.status = 'sent')
+//   POST  ?id=<planId> { action: 'ordered' } -> status 'ordered' and clears
+//         pantry_items.out_of_stock
+// Out-of-stock always-have items (pantry check 'No') are added to the list
+// with outOfStock: true.
 
 const { supabase } = require('../lib/db');
 const { ingredientKey, packsNeeded } = require('../lib/ingredient-key');
@@ -118,6 +122,24 @@ function buildBasket(shoppingList, linkByKey) {
   return { basket, unlinked };
 }
 
+// Always-have items marked "No" in the pantry check go on the list until the
+// week is ordered. A recipe line for the same thing is flagged rather than
+// duplicated; anything else gets its own line (no quantity: buy a pack).
+function addOutOfStock(list, outOfStock, linkByKey) {
+  for (const p of outOfStock) {
+    const matches = alwaysMatcher([p.item_name]);
+    const hits = list.filter(l => matches(l.item));
+    if (hits.length) { hits.forEach(l => { l.outOfStock = true; }); continue; }
+    const iKey = p.ingredient_key || ingredientKey(p.item_name) || p.item_name;
+    list.push({
+      item: p.item_name, quantity: null, unit: null, usedIn: [], note: 'Ran out (pantry check)',
+      category: categorise(p.item_name), position: 9999, gotIt: false,
+      ingredientKey: iKey, linked: !!linkByKey[iKey], outOfStock: true
+    });
+  }
+  return list;
+}
+
 module.exports = async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
@@ -140,6 +162,11 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase.from('weekly_plans')
       .update({ status: action === 'send' ? 'sent' : 'ordered' }).eq('id', planId).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
+    // Ordered: everything we ran out of is now on its way
+    if (action === 'ordered') {
+      const { error: e2 } = await supabase.from('pantry_items').update({ out_of_stock: false }).eq('out_of_stock', true);
+      if (e2) { res.status(500).json({ error: e2.message }); return; }
+    }
     res.status(200).json(data);
     return;
   }
@@ -166,7 +193,7 @@ module.exports = async (req, res) => {
       { data: links, error: linksError }
     ] = await Promise.all([
       supabase.from('recipe_ingredients').select('recipe_id, quantity, unit, item, notes').in('recipe_id', recipeIds.length ? recipeIds : ['00000000-0000-0000-0000-000000000000']),
-      supabase.from('pantry_items').select('item_name, ingredient_key, kind, quantity, unit'),
+      supabase.from('pantry_items').select('item_name, ingredient_key, kind, quantity, unit, out_of_stock'),
       supabase.from('weekly_plan_exclusions').select('item_name').eq('weekly_plan_id', planId),
       supabase.from('product_links').select('*')
     ]);
@@ -178,6 +205,7 @@ module.exports = async (req, res) => {
     if (linksError) console.error('product_links lookup failed:', linksError.message);
 
     const linkByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
+    const outOfStock = staples.filter(s => s.kind === 'always' && s.out_of_stock);
 
     const { data: curatedRows, error: curError } = await supabase
       .from('shopping_list_items').select('*').eq('weekly_plan_id', planId).order('position').order('created_at');
@@ -194,6 +222,7 @@ module.exports = async (req, res) => {
           ...(st ? { have: st.quantity != null ? `${st.quantity}${st.unit ? ' ' + st.unit : ''}` : 'in pantry' } : {})
         };
       });
+      addOutOfStock(list, outOfStock, linkByKey);
       const { basket, unlinked } = buildBasket(list, linkByKey);
       res.status(200).json({
         planId, curated: true, servingsTarget: plan.servings_target, status: plan.status,
@@ -203,7 +232,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const stapleNames = staples.filter(s => s.kind === 'always').map(s => s.item_name.toLowerCase());
+    const stapleNames = staples.filter(s => s.kind === 'always' && !s.out_of_stock).map(s => s.item_name.toLowerCase());
     const stockByKey = Object.fromEntries(staples.filter(s => s.kind === 'stock').map(s => [s.ingredient_key, s]));
     const excludedThisWeek = new Set(exclusions.map(e => e.item_name.toLowerCase()));
 
@@ -268,6 +297,7 @@ module.exports = async (req, res) => {
       })
       .sort((a, b) => a.category.localeCompare(b.category) || a.item.localeCompare(b.item));
 
+    addOutOfStock(shoppingList, outOfStock, linkByKey);
     const { basket, unlinked } = buildBasket(shoppingList, linkByKey);
 
     // Hint lines for things already in the fridge/freezer/cupboard

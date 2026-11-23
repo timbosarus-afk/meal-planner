@@ -25,10 +25,11 @@ function Row({ it, onToggle }) {
         <span className="block text-[16px] leading-snug" style={{ textDecoration: on ? 'line-through' : 'none' }}>
           {qty && <strong className="font-semibold">{qty} </strong>}{it.item}
         </span>
-        {(it.note || it.usedIn?.length > 0 || it.have) && (
+        {(it.note || it.outOfStock || it.usedIn?.length > 0 || it.have) && (
           <span className="block text-[13px] mt-0.5" style={{ color: 'var(--text-soft)' }}>
-            {it.note && <span style={{ color: '#8A5A00' }}>{it.note}</span>}
-            {it.note && it.usedIn?.length > 0 && ' · '}
+            {it.outOfStock && !it.note && <span style={{ color: 'var(--danger)' }}>Ran out (pantry check)</span>}
+            {it.note && <span style={{ color: it.outOfStock ? 'var(--danger)' : '#8A5A00' }}>{it.note}</span>}
+            {(it.note || it.outOfStock) && it.usedIn?.length > 0 && ' · '}
             {it.usedIn?.length > 0 && it.usedIn.join(', ')}
             {it.have && <span className="chip ml-1 py-0 text-[11px]"><Package size={11} />have {it.have}</span>}
           </span>

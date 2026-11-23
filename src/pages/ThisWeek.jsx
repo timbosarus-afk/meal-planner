@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, Sandwich, CheckCircle2, Trash2, CalendarX2, Star, PoundSterling } from 'lucide-react';
+import { Clock, Sandwich, CheckCircle2, Trash2, CalendarX2, Star, PoundSterling, ClipboardCheck, ChevronRight } from 'lucide-react';
 import { PageHeader, Spinner, ErrorBox, Empty, useLoad } from '../components/ui.jsx';
 import WeekSelect from '../components/WeekSelect.jsx';
 import RecipeThumb from '../components/RecipeThumb.jsx';
@@ -68,7 +68,7 @@ export default function ThisWeek() {
   const plan = useLoad(() => (selected ? api.week(selected.id) : Promise.resolve(null)), [selected && selected.id]);
   const costs = useLoad(() => (selected ? api.shoppingList(selected.id).then(d => d.costs) : Promise.resolve(null)), [selected && selected.id]);
   const [confirm, setConfirm] = useState(false);
-  useEffect(() => { const r = () => { plan.reload(); costs.reload(); }; window.addEventListener('recipe-updated', r); return () => window.removeEventListener('recipe-updated', r); }, [plan.reload]);
+  useEffect(() => { const r = () => { plan.reload(); costs.reload(); }; window.addEventListener('recipe-updated', r); window.addEventListener('pantry-updated', r); return () => { window.removeEventListener('recipe-updated', r); window.removeEventListener('pantry-updated', r); }; }, [plan.reload]);
   const [busy, setBusy] = useState(false);
 
   const current = pickCurrentWeek(weeks);
@@ -93,6 +93,14 @@ export default function ThisWeek() {
     body = (
       <>
         <WeekCost c={costs.data} />
+        <button onClick={() => push('pantrycheck', { planId: p.id })} className="card w-full p-3 mb-3 flex items-center gap-3 text-left active:scale-[0.99] transition-transform">
+          <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--green-soft)', color: 'var(--green)' }}><ClipboardCheck size={20} /></span>
+          <span className="flex-1">
+            <span className="block font-semibold">Pantry check</span>
+            <span className="block text-[13px]" style={{ color: 'var(--text-soft)' }}>Got the oil, spices and stock this week needs?</span>
+          </span>
+          <ChevronRight size={18} style={{ color: '#A7B1AD' }} />
+        </button>
         <p className="text-[14px] mb-3 px-1" style={{ color: 'var(--text-soft)' }}>
           {p.recipes.length} meal{p.recipes.length === 1 ? '' : 's'} · cooking for {p.servings_target}
           {totalLunch > 0 && ` · ${totalLunch} lunch portion${totalLunch === 1 ? '' : 's'}`}

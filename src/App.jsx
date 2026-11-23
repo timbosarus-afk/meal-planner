@@ -16,17 +16,31 @@ import { SCREENS } from './lib/screens.js';
 import RecipeDetail from './pages/RecipeDetail.jsx';
 
 import CookMode from './pages/CookMode.jsx';
+import PantryCheck from './pages/PantryCheck.jsx';
 
 SCREENS.recipe = RecipeDetail;
 SCREENS.cook = CookMode;
+SCREENS.pantrycheck = PantryCheck;
 
 function Shell() {
   const { bar } = usePrefs();
   const [tab, setTab] = useState(() => (location.hash.slice(1) in PAGES ? location.hash.slice(1) : 'week'));
   const [from, setFrom] = useState(null); // page we came from (for More -> Pantry "back")
-  const [stack, setStack] = useState([]);
+  // Deep links to a screen, e.g. the planning reminder opens /#pantry-check
+  const [stack, setStack] = useState(() => (location.hash === '#pantry-check' ? [{ screen: 'pantrycheck', props: {}, scroll: 0 }] : []));
 
   useEffect(() => { history.replaceState(null, '', '#' + tab); window.scrollTo(0, 0); }, [tab]);
+  // Notification tapped while the app is already open (service worker navigates to /#pantry-check)
+  useEffect(() => {
+    const onHash = () => {
+      if (location.hash === '#pantry-check') {
+        setStack(s => (s.length && s[s.length - 1].screen === 'pantrycheck' ? s : [...s, { screen: 'pantrycheck', props: {}, scroll: window.scrollY }]));
+        history.replaceState(null, '', '#' + tab);
+      }
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [tab]);
 
   const nav = useMemo(() => ({
     go: key => { setStack([]); setFrom(bar.includes(key) || key === 'more' ? null : tab); setTab(key); },

@@ -45,9 +45,10 @@ async function message(local: { date: string; dow: number }) {
   const { data: plans } = await supabase.from('weekly_plans').select('id, week_start_date').gte('week_start_date', local.date).order('week_start_date');
   const nice = new Date(monday + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   const upcoming = (plans ?? []).find(p => p.week_start_date >= local.date);
-  if (!upcoming) return { title: 'Time to plan meals', body: `Nothing planned for the week of ${nice} yet. Ask Claude to plan it.` };
+  if (!upcoming) return { title: 'Time to plan meals', body: `Nothing planned for the week of ${nice} yet. Ask Claude to plan it.`, url: '/' };
   const { count } = await supabase.from('weekly_plan_recipes').select('id', { count: 'exact', head: true }).eq('weekly_plan_id', upcoming.id);
-  return { title: 'Meals are planned', body: `${count ?? 0} meals lined up. Check the shopping list before you order.` };
+  // Tapping opens the pantry check for the planned week
+  return { title: 'Meals are planned', body: `${count ?? 0} meals lined up. Tap for a quick pantry check before you order.`, url: '/#pantry-check' };
 }
 
 async function sendAll(subs: { id: string; subscription: unknown }[], payload: object) {
