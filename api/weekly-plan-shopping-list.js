@@ -100,7 +100,12 @@ function buildBasket(shoppingList, linkByKey) {
         packSize: link.pack_size,
         packUnit: link.pack_unit,
         packs: packsNeeded(items.map(i => ({ quantity: i.quantity, unit: i.unit })), link),
-        items: items.map(i => i.item)
+        items: items.map(i => i.item),
+        // Prices saved by the extension (null until seen). nectarPrice is
+        // what you pay when there's a Nectar offer; use it first for costs.
+        price: link.price != null ? Number(link.price) : null,
+        nectarPrice: link.nectar_price != null ? Number(link.nectar_price) : null,
+        priceUpdatedAt: link.price_updated_at || null
       });
     } else {
       unlinked.push({ ingredientKey: iKey, items: items.map(i => i.item) });

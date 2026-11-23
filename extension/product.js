@@ -110,6 +110,53 @@
     return { slug, name };
   }
 
+  // ---- Prices ---------------------------------------------------------------
+  // Every product shows a shelf price (gw-product-retail-price) and, when
+  // there's a Nectar offer, a Nectar price (gw-product-contextual-price).
+  // Each element also holds the unit price ("85p85p / kg"), so take the first
+  // money value. JSON-LD offers.price is the fallback.
+
+  function parseMoney(text) {
+    const m = String(text || '').match(/£\s?(\d+(?:\.\d{1,2})?)|(\d+)\s?p\b/);
+    if (!m) return null;
+    return m[1] ? Number(m[1]) : Number(m[2]) / 100;
+  }
+
+  // root = a product card; otherwise the main product on a page (doc can be a
+  // fetched, parsed product page). Skips carousels and "bought together".
+  function readPrices(root, doc = document) {
+    const pick = sel => root
+      ? root.querySelector(sel)
+      : [...doc.querySelectorAll(sel)].find(e => !e.closest(CARD) && !e.closest('[data-testid="frequently-bought-together"]'));
+    let price = parseMoney(pick('[data-testid="gw-product-retail-price"]')?.textContent);
+    const nectarPrice = parseMoney(pick('[data-testid="gw-product-contextual-price"]')?.textContent);
+    if (price == null && !root) {
+      for (const s of doc.querySelectorAll('script[type="application/ld+json"]')) {
+        try {
+          const offers = JSON.parse(s.textContent).offers;
+          const o = Array.isArray(offers) ? offers[0] : offers;
+          if (o?.price) { price = Number(o.price); break; }
+        } catch { /* ignore */ }
+      }
+    }
+    return { price: price ?? null, nectarPrice: nectarPrice ?? null };
+  }
+
+  const money = n => n == null ? '' : (n < 1 ? `${Math.round(n * 100)}p` : `£${n.toFixed(2)}`);
+  const priceLabel = p => p.nectarPrice != null && p.nectarPrice !== p.price
+    ? `${money(p.nectarPrice)} Nectar · ${money(p.price)}`
+    : money(p.price ?? p.nectarPrice);
+
+  async function sendPrices(apiUrl, prices) {
+    const list = prices.filter(p => p.slug && (p.price != null || p.nectarPrice != null));
+    if (!apiUrl || !list.length) return;
+    await fetch(`${apiUrl}/api/product-links`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prices: list })
+    }).catch(() => {});
+  }
+
   // "Sainsbury's Red Onions x3" -> 3 each, "Whole Milk 2.27L" -> 2270 ml,
   // "Beef Mince 5% Fat 500g" -> 500 g, "Eggs 6 pack" -> 6 each.
   function guessPack(name) {
@@ -218,6 +265,9 @@
         body: JSON.stringify({ ids: usedIds })
       }).catch(() => {});
     }
+
+    // Prices seen on each product page during the run keep costs current
+    sendPrices(run.apiUrl, run.prices || []);
   }
 
   async function handleRun() {
@@ -256,6 +306,7 @@
     if (!latest) return true;
 
     latest.results.push({ ...result, linkId: entry.linkId, ingredientKey: entry.ingredientKey, productName: entry.productName, packs: entry.packs, productUrl: entry.productUrl });
+    latest.prices = (latest.prices || []).concat({ slug: entry.productSlug, ...readPrices(null) });
     latest.index += 1;
     latest.steer = 0;
     await chrome.storage.local.set({ basketRun: latest });
@@ -315,7 +366,7 @@
       if (S.weekId) {
         const d = await api(`/api/weekly-plan-shopping-list?id=${encodeURIComponent(S.weekId)}`);
         S.list = {
-          linked: (d.basket || []).map(b => ({ key: b.ingredientKey, productName: b.productName, productUrl: b.productUrl, productSlug: b.productSlug, items: b.items || [] })),
+          linked: (d.basket || []).map(b => ({ key: b.ingredientKey, productName: b.productName, productUrl: b.productUrl, productSlug: b.productSlug, items: b.items || [], price: b.price ?? null, nectarPrice: b.nectarPrice ?? null })),
           unlinked: (d.unlinked || []).map(u => ({ key: u.ingredientKey, items: u.items || [] }))
         };
       } else {
@@ -374,7 +425,42 @@
     }
   }
 
-  async function linkProduct({ slug, name, packSize, packUnit, markUsed = false }) {
+  // Fetch every linked product's page in the background and save its price.
+  // Same-origin fetch from Sainsbury's, so your Nectar prices come through.
+  async function refreshPrices() {
+    if (S.busy) return;
+    S.busy = true;
+    try {
+      const links = await api('/api/product-links');
+      const slugs = [...new Set(links.map(l => l.product_slug).filter(Boolean))];
+      if (!slugs.length) { setMsg('Nothing linked yet.'); return; }
+      const found = [];
+      for (let i = 0; i < slugs.length; i++) {
+        setMsg(`Updating prices ${i + 1} of ${slugs.length}…`);
+        render();
+        try {
+          const html = await fetch(`${SITE}/groceries/product/${slugs[i]}`, { credentials: 'include' }).then(r => r.text());
+          const p = readPrices(null, new DOMParser().parseFromString(html, 'text/html'));
+          if (p.price != null || p.nectarPrice != null) found.push({ slug: slugs[i], ...p });
+        } catch { /* skip this one */ }
+        await sleep(400); // be gentle with Sainsbury's
+      }
+      await sendPrices(S.apiUrl, found);
+      for (const l of S.list?.linked || []) {
+        const p = found.find(f => f.slug === l.productSlug);
+        if (p) { l.price = p.price; l.nectarPrice = p.nectarPrice; }
+      }
+      await saveCache();
+      setMsg(`Updated ${found.length} of ${slugs.length} prices.`, found.length > 0);
+    } catch (err) {
+      setMsg(`Couldn't update prices: ${err.message}`, false);
+    } finally {
+      S.busy = false;
+      render();
+    }
+  }
+
+  async function linkProduct({ slug, name, packSize, packUnit, markUsed = false, prices = {} }) {
     const key = S.activeKey;
     if (!key) { setMsg('Pick an item from the list first.', false); render(); return; }
     if (!slug) { setMsg("Couldn't read this product's address.", false); render(); return; }
@@ -387,12 +473,12 @@
       const data = await api('/api/product-links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredientName: key, productUrl: apiProductUrl(slug), productName: name, packSize: pack.size, packUnit: pack.unit, defaultQty: 1, markUsed })
+        body: JSON.stringify({ ingredientName: key, productUrl: apiProductUrl(slug), productName: name, packSize: pack.size, packUnit: pack.unit, defaultQty: 1, markUsed, price: prices.price ?? null, nectarPrice: prices.nectarPrice ?? null })
       });
       const L = S.list || { linked: [], unlinked: [] };
       const entry = L.unlinked.find(u => u.key === key) || L.linked.find(l => l.key === key) || { key, items: [] };
       L.unlinked = L.unlinked.filter(u => u.key !== key);
-      L.linked = L.linked.filter(l => l.key !== key).concat({ key, items: entry.items, productName: name, productUrl: data.product_url, productSlug: slug });
+      L.linked = L.linked.filter(l => l.key !== key).concat({ key, items: entry.items, productName: name, productUrl: data.product_url, productSlug: slug, price: prices.price ?? null, nectarPrice: prices.nectarPrice ?? null });
       S.list = L;
       S.skipped = S.skipped.filter(k => k !== key);
       await chrome.storage.local.set({ panelSkipped: S.skipped });
@@ -504,6 +590,7 @@
         const p = guessPack(name);
         action = `<div class="prod">
             <div class="pname">${esc(name || slug)}</div>
+            ${(() => { const pr = readPrices(null); return (pr.price != null || pr.nectarPrice != null) ? `<span class="sub">${esc(priceLabel(pr))}</span>` : ''; })()}
             ${linkedHere ? `<span class="sub">Currently linked to "${esc(linkedHere.key)}"</span>` : ''}
             <div class="pack">
               <label>Pack size<input id="ps" type="number" step="any" value="${esc(p.size)}"></label>
@@ -536,7 +623,7 @@
     const todo = L.unlinked.map(u =>
       `<li class="todo${u.key === S.activeKey ? ' on' : ''}${S.skipped.includes(u.key) ? ' skipped' : ''}" data-key="${esc(u.key)}">${esc(u.key)}${S.skipped.includes(u.key) ? ' <span class="sub" style="display:inline">(skipped)</span>' : ''}</li>`).join('');
     const linked = L.linked.map(l =>
-      `<li class="done" data-url="${esc(l.productUrl || '')}"><span class="tick">${TICK}</span><span><span>${esc(l.key)}</span><span class="sub">${esc(l.productName || '')}</span></span></li>`).join('');
+      `<li class="done" data-url="${esc(l.productUrl || '')}"><span class="tick">${TICK}</span><span><span>${esc(l.key)}</span><span class="sub">${esc(l.productName || '')}${(l.price != null || l.nectarPrice != null) ? ` · ${esc(priceLabel(l))}` : ''}</span></span></li>`).join('');
 
     root.innerHTML = `<style>${CSS}</style>
       <div class="panel">
@@ -548,7 +635,10 @@
           ${S.msg ? `<div class="msg ${S.msgOk ? 'ok' : 'err'}">${esc(S.msg)}</div>` : ''}
           <details${!S.activeKey && L.unlinked.length ? ' open' : ''}><summary>Needs linking (${L.unlinked.length})</summary><ul>${todo || '<li class="empty">Nothing left</li>'}</ul></details>
           <details><summary>Linked (${L.linked.length})</summary><ul>${linked || '<li class="empty">None yet</li>'}</ul></details>
-          <button class="textbtn" data-a="refresh">Refresh list</button>
+          <div class="row" style="gap:14px">
+            <button class="textbtn" data-a="refresh">Refresh list</button>
+            <button class="textbtn" data-a="prices"${S.busy ? ' disabled' : ''}>Update prices</button>
+          </div>
         </div>
       </div>`;
     bind();
@@ -569,12 +659,14 @@
       if (a === 'always') return alwaysHave();
       if (a === 'search') { location.href = searchUrl(S.activeKey); return; }
       if (a === 'refresh') { setMsg(''); return refresh(); }
+      if (a === 'prices') return refreshPrices();
       if (a === 'link-page') {
         return linkProduct({
           slug: productSlug(),
           name: productName(),
           packSize: Number(root.getElementById('ps')?.value) || null,
-          packUnit: root.getElementById('pu')?.value
+          packUnit: root.getElementById('pu')?.value,
+          prices: readPrices(null)
         });
       }
     }));
@@ -609,7 +701,7 @@
           e.preventDefault();
           e.stopPropagation();
           const i = tileInfo(card);
-          if (i) linkProduct({ slug: i.slug, name: i.name });
+          if (i) linkProduct({ slug: i.slug, name: i.name, prices: readPrices(card) });
         }, true);
         card.appendChild(btn);
       }
@@ -627,14 +719,18 @@
     const card = btn.closest(CARD);
     if (card && isSearchPage()) {
       const i = tileInfo(card);
-      if (i) setTimeout(() => linkProduct({ slug: i.slug, name: i.name, markUsed: true }), 300);
+      // Read prices now: once Add is clicked the card swaps to the quantity stepper
+      const prices = readPrices(card);
+      if (i) setTimeout(() => linkProduct({ slug: i.slug, name: i.name, markUsed: true, prices }), 300);
     } else if (!card && productSlug()) {
+      const prices = readPrices(null);
       setTimeout(() => linkProduct({
         slug: productSlug(),
         name: productName(),
         packSize: Number(root?.getElementById('ps')?.value) || null,
         packUnit: root?.getElementById('pu')?.value,
-        markUsed: true
+        markUsed: true,
+        prices
       }), 300);
     }
   }, true);
@@ -678,7 +774,16 @@
       await loadSaved();
       ensurePanel();
       render();
-      if (productSlug()) { await waitFor(() => productName(), 5000); render(); }
+      if (productSlug()) {
+        await waitFor(() => productName(), 5000);
+        render();
+        // Visiting a linked product quietly refreshes its saved price
+        const slug = productSlug();
+        if ((S.list?.linked || []).some(l => l.productSlug === slug)) {
+          const pr = await waitFor(() => { const p = readPrices(null); return (p.price != null || p.nectarPrice != null) ? p : null; }, 4000);
+          if (pr) sendPrices(S.apiUrl, [{ slug, ...pr }]);
+        }
+      }
       injectCardButtons();
       refresh(); // background: cached list shows instantly, fresh one replaces it
     } finally {
