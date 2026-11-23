@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, Camera, Search, Clock, Users, Minus, Plus, ListChecks, CookingPot, Check, MoreHorizontal, Trash2, Pencil, ChefHat, CalendarCheck } from 'lucide-react';
+import { Link2, ListPlus, ChevronLeft, Camera, Search, Clock, Users, Minus, Plus, ListChecks, CookingPot, Check, MoreHorizontal, Trash2, Pencil, ChefHat, CalendarCheck } from 'lucide-react';
 import { PageHeader, Spinner, ErrorBox, useLoad } from '../components/ui.jsx';
 import Segmented from '../components/Segmented.jsx';
 import Rating from '../components/Rating.jsx';
@@ -69,6 +69,50 @@ function Ingredients({ recipe, target }) {
         })}
       </div>
     </>
+  );
+}
+
+// Ingredients with no Sainsbury's product link (always-have items excluded).
+// "Queue" adds them to link_queue; Claude shows the queue in the extension panel.
+function NotLinked({ ingredients }) {
+  const missing = [];
+  const seen = new Set();
+  (ingredients || []).forEach(i => { if (!i.linked && !i.alwaysHave && i.ingredientKey && !seen.has(i.ingredientKey)) { seen.add(i.ingredientKey); missing.push(i); } });
+  const queue = useLoad(() => api.linkQueue().then(rows => new Set(rows.map(r => r.ingredient_key))), []);
+  const [busy, setBusy] = useState(null);
+  if (!missing.length) return null;
+  const queued = queue.data || new Set();
+  const add = async list => {
+    setBusy(list.length > 1 ? 'all' : list[0].ingredientKey);
+    try {
+      const r = await api.queueLinks(list.map(i => i.ingredientKey));
+      queue.setData(q => new Set([...(q || []), ...r.queued]));
+    } catch (e) { alert(e.message); }
+    finally { setBusy(null); }
+  };
+  const left = missing.filter(i => !queued.has(i.ingredientKey));
+  return (
+    <section className="card p-4 mt-6">
+      <div className="flex items-center gap-2 mb-1">
+        <Link2 size={18} style={{ color: 'var(--green)' }} />
+        <span className="font-display font-bold text-[17px] flex-1">Not linked yet</span>
+        {left.length > 1 && <button className="btn btn-soft py-1.5 px-3 text-[13px]" disabled={!!busy} onClick={() => add(left)}><ListPlus size={15} />{busy === 'all' ? 'Queuing…' : 'Queue all'}</button>}
+      </div>
+      <p className="text-[13px] mb-2" style={{ color: 'var(--text-soft)' }}>No Sainsbury's product yet, so they can't be priced or added to the basket.</p>
+      <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
+        {missing.map(i => {
+          const on = queued.has(i.ingredientKey);
+          return (
+            <div key={i.ingredientKey} className="flex items-center gap-3 py-2.5">
+              <span className="flex-1 text-[15px] capitalize-first">{i.ingredientKey}</span>
+              {on
+                ? <span className="chip"><Check size={13} />Queued</span>
+                : <button className="btn btn-soft py-1.5 px-3 text-[13px]" disabled={!!busy || !queue.data} onClick={() => add([i])}>{busy === i.ingredientKey ? 'Queuing…' : 'Queue for linking'}</button>}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -153,6 +197,8 @@ export default function RecipeDetail({ id, servings: initialServings }) {
         <Rating value={r.rating} onChange={v => update({ local: { rating: v }, body: { rating: v } })} />
         {r.rating_notes && <p className="text-[14px] mt-2" style={{ color: 'var(--text-soft)' }}>“{r.rating_notes}”</p>}
       </section>
+
+      <NotLinked ingredients={r.ingredients} />
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={displayName(r)}>
         <div className="grid gap-2">

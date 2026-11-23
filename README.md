@@ -56,7 +56,15 @@ Known-bad test URL (JS-rendered SPA, will return `needsBrowser: true`):
 | `shopping_list_items` | Claude's curated list for a week; when present it replaces the generated list. `section` groups, `position` orders, `pack_note` shows under the item, `checked` is ticked in the app |
 | `pantry_items` | Pantry page and What can I make? (`kind`: `stock` / `always` / `want`) |
 | `product_links` | Written by the extension when a product is added to the basket: real Sainsbury's products and pack sizes |
+| `link_queue` | Ingredients queued from a recipe's "Not linked yet" card (`/api/link-queue` GET/POST/DELETE); for the extension's Sainsbury's panel |
+| `pantry_items.out_of_stock` | Set by the pantry check ("No"); those items go on the shopping list until the week is marked ordered |
 | `meal_preferences` | Claude only; not shown in the app |
+
+## Costs
+`lib/costs.js` (tests: `npm test`). Pack price = Nectar price, else shelf price, from `product_links`.
+- Week total (This Week): whole packs x pack price from the basket; per serving over servings_override/target.
+- Meal cost (cards, recipe page): scaled qty / pack size x pack price when units match; always-have items excluded.
+- Anything without a link, price, quantity or matching unit counts as "not priced".
 
 ## Planning reminder
 - Edge function `supabase/functions/meal-planning-reminder` (deployed, `verify_jwt` off), called every 15 min by
