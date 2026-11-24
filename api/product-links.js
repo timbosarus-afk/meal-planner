@@ -92,6 +92,8 @@ module.exports = async (req, res) => {
       .select()
       .single();
     if (error) { res.status(500).json({ error: error.message }); return; }
+    // Linked now, so it no longer needs to wait in the app's link queue
+    await supabase.from('link_queue').delete().eq('ingredient_key', key);
     res.status(200).json(data);
     return;
   }
