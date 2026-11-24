@@ -338,7 +338,7 @@
 
   async function loadSaved() {
     const s = await chrome.storage.local.get(['apiUrl', 'selectedBatchId', 'panelSource', 'linkingKey', 'panelCollapsed', 'panelSkipped', 'panelCache', 'noOtherSizes']);
-    S.source = ['week', 'all', 'sizes'].includes(s.panelSource) ? s.panelSource : 'week';
+    S.source = ['week', 'all', 'sizes', 'flagged'].includes(s.panelSource) ? s.panelSource : 'week';
     S.apiUrl = s.apiUrl || null;
     S.weekId = s.selectedBatchId || null;
     S.activeKey = s.linkingKey || null;
@@ -381,6 +381,14 @@
           linked: []
         };
         S.sizesCount = rows.length;
+      } else if (S.source === 'flagged') {
+        const links = await api('/api/product-links');
+        S.list = {
+          unlinked: [],
+          linked: [],
+          flagged: links.filter(l => l.flag_status === 'flagged').map(l => ({ id: l.id, key: l.ingredient_key, productName: l.product_name, productUrl: l.product_url, reason: l.flag_reason || 'Check this link' }))
+        };
+        S.flaggedCount = S.list.flagged.length;
       } else if (S.source !== 'week') {
         const [rows, links] = await Promise.all([api('/api/link-queue?all=1'), api('/api/product-links')]);
         const todo = S.source === 'queue' ? rows.filter(r => r.queued) : rows;
@@ -450,6 +458,33 @@
     S.sizesCount = S.list.unlinked.length;
     await saveCache();
     await getNext();
+  }
+
+  // Flagged tab: "Accept" keeps the link and stops it being flagged again
+  async function acceptFlag(id) {
+    try {
+      await api('/api/product-links', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accept: id }) });
+      S.list.flagged = S.list.flagged.filter(f => f.id !== id);
+      S.flaggedCount = S.list.flagged.length;
+      setMsg('Accepted. It will not be flagged again.');
+      await saveCache();
+    } catch (err) { setMsg(err.message, false); }
+    render();
+  }
+
+  // "Wrong" removes the link and goes to Sainsbury's to find a better one
+  async function wrongFlag(id) {
+    const f = (S.list.flagged || []).find(x => x.id === id);
+    if (!f) return;
+    try {
+      await api('/api/product-links', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      S.list.flagged = S.list.flagged.filter(x => x.id !== id);
+      S.flaggedCount = S.list.flagged.length;
+      await saveCache();
+      S.source = 'all';
+      await chrome.storage.local.set({ panelSource: 'all' });
+      await setActive(f.key, true);
+    } catch (err) { setMsg(err.message, false); render(); }
   }
 
   async function alwaysHave() {
@@ -605,6 +640,8 @@
     li.done { display: flex; gap: 8px; align-items: flex-start; }
     li.done > span:last-child { order: 2; flex: 1; }
     .tick { color: #1B4D3E; flex: none; margin-top: 2px; }
+    .flag { border: 1px solid #E3C99B; background: #FFF8EC; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .flag .why { font-size: 14px; color: #7A4B00; font-weight: 600; }
     .unlink { order: 3; background: none; color: #B3261E; font-weight: 700; font-size: 13px; padding: 0 2px; text-decoration: underline; }
     li.empty { color: #8A9585; cursor: default; }
     .textbtn { background: none; color: #4A5546; font-weight: 600; font-size: 14px; text-decoration: underline; padding: 0; align-self: flex-start; }
@@ -700,12 +737,15 @@
 
     const weekOpts = S.weeks.map(w => `<option value="${esc(w.id)}"${w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('');
     const tab = (src, label, n) => `<button class="tab${S.source === src ? ' on' : ''}" data-src="${src}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
-    const tabsHtml = `<div class="tabs">${tab('week', 'This week')}${tab('all', 'All recipes')}${tab('sizes', 'Smaller sizes', S.sizesCount)}</div>`;
+    const tabsHtml = `<div class="tabs">${tab('week', 'This week')}${tab('all', 'All recipes')}${tab('sizes', 'Smaller sizes', S.sizesCount)}${tab('flagged', 'Flagged', S.flaggedCount)}</div>`;
     const progress = S.source === 'sizes'
       ? `${L.unlinked.length} item${L.unlinked.length === 1 ? '' : 's'} where a smaller pack would save waste`
       : S.source === 'queue'
       ? `${L.unlinked.length} left in the queue`
       : `${done} of ${total} linked${S.source === 'all' ? ' across all recipes' : ''}`;
+    const flaggedHtml = (L.flagged && L.flagged.length)
+      ? L.flagged.map(f => `<div class="flag"><div class="key">${esc(f.key)}</div><span class="sub">${esc(f.productName || '')}</span><span class="why">${esc(f.reason)}</span><div class="row"><button class="primary" data-a="accept" data-id="${esc(f.id)}">Accept</button><button class="ghost" data-a="wrong" data-id="${esc(f.id)}">Wrong - relink</button></div></div>`).join('')
+      : '<p class="hint">Nothing flagged. Ask Claude to "check my linked ingredients" and anything odd shows up here.</p>';
     const todo = L.unlinked.map(u =>
       `<li class="todo${u.key === S.activeKey ? ' on' : ''}${S.skipped.includes(u.key) ? ' skipped' : ''}" data-key="${esc(u.key)}">${esc(u.key)}${S.skipped.includes(u.key) ? ' <span class="sub" style="display:inline">(skipped)</span>' : ''}</li>`).join('');
     const linked = L.linked.map(l =>
@@ -717,12 +757,12 @@
         <div class="body">
           ${tabsHtml}
           ${S.source === 'week' && S.weeks.length > 1 ? `<select id="week" title="Which week">${weekOpts}</select>` : ''}
-          <div><div class="bar"><span style="width:${total ? Math.round(done / total * 100) : 0}%"></span></div><span class="sub">${esc(progress)}</span></div>
-          <div class="active">${activeHtml}</div>
+          ${S.source === 'flagged' ? flaggedHtml : `<div><div class="bar"><span style="width:${total ? Math.round(done / total * 100) : 0}%"></span></div><span class="sub">${esc(progress)}</span></div>
+          <div class="active">${activeHtml}</div>`}
           ${S.msg ? `<div class="msg ${S.msgOk ? 'ok' : 'err'}">${esc(S.msg)}</div>` : ''}
-          <input id="q" type="search" placeholder="Search needs linking and linked" value="${esc(S.q)}" autocomplete="off">
+          ${S.source === 'flagged' ? '' : `          <input id="q" type="search" placeholder="Search needs linking and linked" value="${esc(S.q)}" autocomplete="off">
           <details${(!S.activeKey && L.unlinked.length) || S.q ? ' open' : ''}><summary>Needs linking (${L.unlinked.length})</summary><ul>${todo || '<li class="empty">Nothing left</li>'}</ul></details>
-          <details${S.q ? ' open' : ''}><summary>Linked (${L.linked.length})</summary><ul>${linked || '<li class="empty">None yet</li>'}</ul></details>
+          <details${S.q ? ' open' : ''}><summary>Linked (${L.linked.length})</summary><ul>${linked || '<li class="empty">None yet</li>'}</ul></details>`}
           <div class="row" style="gap:14px">
             <button class="textbtn" data-a="refresh">Refresh list</button>
             <button class="textbtn" data-a="prices"${S.busy ? ' disabled' : ''}>Update prices</button>
@@ -746,6 +786,8 @@
       if (a === 'skip') return skip();
       if (a === 'always') return alwaysHave();
       if (a === 'nosizes') return noOtherSizes();
+      if (a === 'accept') return acceptFlag(el.dataset.id);
+      if (a === 'wrong') return wrongFlag(el.dataset.id);
       if (a === 'search') { location.href = searchUrl(S.activeKey); return; }
       if (a === 'refresh') { setMsg(''); return refresh(); }
       if (a === 'prices') return refreshPrices();

@@ -11,6 +11,7 @@
 //                          -> update saved prices for every link to that product
 //                             (from link time, basket runs, product page visits
 //                             and the panel's "Update prices")
+// PATCH { accept: id }     -> accept a flagged link (flag_status = 'accepted')
 // DELETE { id }            -> remove one linked product/size
 
 const { supabase } = require('../lib/db');
@@ -101,7 +102,15 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'PATCH') {
-    const { ids, prices } = req.body || {};
+    const { ids, prices, accept } = req.body || {};
+
+    // Flagged tab: keep this link and never flag it again
+    if (accept) {
+      const { error } = await supabase.from('product_links').update({ flag_status: 'accepted', flag_reason: null }).eq('id', accept);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      res.status(200).json({ accepted: accept });
+      return;
+    }
 
     if (Array.isArray(prices)) {
       const now = new Date().toISOString();
