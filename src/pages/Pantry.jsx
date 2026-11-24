@@ -79,7 +79,7 @@ export default function Pantry() {
   };
 
   return (
-    <div className="page">
+    <div className="page narrow">
       <PageHeader title="Pantry" onBack={canBack ? back : undefined} />
       <p className="text-[14px] -mt-2 mb-4 flex items-start gap-2" style={{ color: 'var(--text-soft)' }}>
         <Sparkles size={16} className="shrink-0 mt-0.5" style={{ color: 'var(--green-mid)' }} />

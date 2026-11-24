@@ -58,8 +58,8 @@ async function allUnlinked() {
     .sort((a, b) => (b.queued - a.queued) || (b.recipes.length - a.recipes.length) || a.ingredientKey.localeCompare(b.ingredientKey));
 }
 
-// Keeps for ages, so a big pack isn't waste
-const KEEPS = /\b(rice|pasta|penne|spaghetti|linguine|rigatoni|fusilli|tagliatelle|noodle|couscous|flour|sugar|oil|sauce|vinegar|stock|lentil|oat|breadcrumb|panko|frozen|bean|chickpea|tin|tinned|chopped tomato|tomato puree|passata|dal|honey|salt)\b/;
+// Keeps for ages (or gets used every day anyway), so a big pack isn't waste
+const KEEPS = /\b(rice|pasta|penne|spaghetti|linguine|rigatoni|fusilli|tagliatelle|noodle|couscous|flour|sugar|oil|sauce|vinegar|stock|lentil|oat|breadcrumb|panko|frozen|bean|chickpea|tin|tinned|chopped tomato|tomato puree|passata|dal|honey|salt|milk|butter|ghee)\b/;
 const HOUSEHOLD_SERVINGS = 3; // 2 adults + toddler
 
 async function needsSmallerSize() {

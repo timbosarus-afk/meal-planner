@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-// Bottom sheet with a dimmed backdrop. Tap outside to close.
+// Bottom sheet with a dimmed backdrop (a centred dialog on desktop). Tap outside to close.
 export default function Sheet({ open, onClose, title, children }) {
   useEffect(() => {
     if (!open) return;
@@ -10,12 +10,12 @@ export default function Sheet({ open, onClose, title, children }) {
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center lg:p-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/35" />
       <div role="dialog" aria-label={title} onClick={e => e.stopPropagation()}
-        className="relative w-full max-w-[640px] bg-white rounded-t-3xl p-5 shadow-2xl"
+        className="relative w-full max-w-[640px] lg:max-w-[460px] bg-white rounded-t-3xl lg:rounded-3xl p-5 lg:p-6 shadow-2xl"
         style={{ paddingBottom: 'calc(20px + var(--safe-bottom))', animation: 'sheetUp .2s ease-out' }}>
-        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-black/10" />
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-black/10 lg:hidden" />
         {title && <h2 className="font-display font-extrabold text-[20px] mb-3" style={{ color: 'var(--text)' }}>{title}</h2>}
         {children}
       </div>

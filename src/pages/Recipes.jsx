@@ -4,9 +4,9 @@ import { PageHeader, Spinner, ErrorBox, Empty, useLoad } from '../components/ui.
 import RecipeThumb from '../components/RecipeThumb.jsx';
 import { api } from '../lib/api.js';
 import { useNav } from '../lib/nav.js';
-import { displayName } from '../lib/format.js';
+import { displayName, money } from '../lib/format.js';
 
-const SORTS = { recent: 'Newest', rating: 'Top rated', az: 'A–Z' };
+const SORTS = { recent: 'Newest', rating: 'Top rated', cheap: 'Cheapest', az: 'A–Z' };
 
 export default function Recipes() {
   const { push } = useNav();
@@ -31,6 +31,8 @@ export default function Recipes() {
       && (!filter || r.cuisine === filter || (r.tags || []).includes(filter)));
     if (sort === 'rating') out = [...out].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     if (sort === 'az') out = [...out].sort((a, b) => displayName(a).localeCompare(displayName(b)));
+    // Unpriced recipes go last
+    if (sort === 'cheap') out = [...out].sort((a, b) => (a.cost?.perServing ?? Infinity) - (b.cost?.perServing ?? Infinity));
     return out;
   }, [list.data, q, filter, sort]);
 
@@ -56,9 +58,9 @@ export default function Recipes() {
         : !list.data ? <Spinner />
         : !shown.length ? <Empty icon={BookOpen} title="No recipes found">{list.data.length ? 'Try a different search.' : 'Ask Claude to find some meals.'}</Empty>
         : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
             {shown.map(r => (
-              <button key={r.id} onClick={() => push('recipe', { id: r.id })} className="card overflow-hidden text-left active:scale-[0.98] transition-transform">
+              <button key={r.id} onClick={() => push('recipe', { id: r.id })} className="card overflow-hidden text-left flex flex-col justify-start active:scale-[0.98] transition-transform">
                 <RecipeThumb recipe={r} rounded="" className="w-full aspect-[4/3]" />
                 <div className="p-3">
                   <div className="font-display font-bold text-[15px] leading-snug line-clamp-2">{displayName(r)}</div>
@@ -66,6 +68,12 @@ export default function Recipes() {
                     {r.cuisine && <span className="truncate">{r.cuisine}</span>}
                     {r.rating ? <span className="flex items-center gap-0.5 ml-auto"><Star size={12} fill="currentColor" style={{ color: 'var(--amber)' }} />{r.rating}</span> : null}
                   </div>
+                  {r.cost?.perServing > 0 && (
+                    <div className="mt-1.5 text-[13px]" title={r.cost.notPriced ? `${r.cost.notPriced} ingredient${r.cost.notPriced === 1 ? '' : 's'} not priced yet, so this is a little low` : 'Rough cost of what the meal uses'}>
+                      <span className="font-bold" style={{ color: 'var(--green)' }}>~{money(r.cost.perServing)}</span>
+                      <span style={{ color: 'var(--text-soft)' }}> a serving{r.cost.notPriced ? '+' : ''}</span>
+                    </div>
+                  )}
                 </div>
               </button>
             ))}

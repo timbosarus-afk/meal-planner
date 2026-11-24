@@ -1,11 +1,13 @@
 // Vercel serverless function — GET list of all saved recipes.
 // Returns lightweight summaries (image_url for the Recipes tab gallery,
-// nickname for shorter display names) — use GET /api/recipe?id=... for
-// full detail with ingredients/steps.
+// nickname for shorter display names) plus a rough cost per recipe at its own
+// servings ({ total, perServing, notPriced }) — use GET /api/recipe?id=...
+// for full detail with ingredients/steps.
 
 const { supabase } = require('../lib/db');
 const reparseIngredients = require('../lib/reparse-ingredients');
 const { canMake, setRole } = require('../lib/can-make');
+const { alwaysMatcher, recipeCost, groupLinks } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -47,6 +49,27 @@ module.exports = async (req, res) => {
   if (error) {
     res.status(500).json({ error: error.message });
     return;
+  }
+
+  // Cost per recipe ("what it uses"), same maths as the recipe page. If this
+  // part fails the list still loads, just without prices.
+  try {
+    const [ings, links, always] = await Promise.all([
+      supabase.from('recipe_ingredients').select('recipe_id, quantity, unit, item'),
+      supabase.from('product_links').select('ingredient_key, pack_size, pack_unit, price, nectar_price'),
+      supabase.from('pantry_items').select('item_name').eq('kind', 'always')
+    ]);
+    for (const r of [ings, links, always]) if (r.error) throw new Error(r.error.message);
+    const linksByKey = groupLinks(links.data);
+    const isAlways = alwaysMatcher(always.data.map(a => a.item_name));
+    const byRecipe = {};
+    for (const i of ings.data) (byRecipe[i.recipe_id] ||= []).push(i);
+    for (const r of data) {
+      const c = recipeCost({ ingredients: byRecipe[r.id] || [], linksByKey, isAlways, baseServings: r.servings, targetServings: r.servings });
+      r.cost = { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced };
+    }
+  } catch (err) {
+    console.error('recipe costs failed:', err.message);
   }
 
   res.status(200).json(data);

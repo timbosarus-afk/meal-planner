@@ -92,8 +92,9 @@ export default function ThisWeek() {
     const totalLunch = p.recipes.reduce((n, r) => n + extraLunch(r, p), 0);
     body = (
       <>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:mb-1">
         <WeekCost c={costs.data} />
-        <button onClick={() => push('pantrycheck', { planId: p.id })} className="card w-full p-3 mb-3 flex items-center gap-3 text-left active:scale-[0.99] transition-transform">
+        <button onClick={() => push('pantrycheck', { planId: p.id })} className="card w-full p-3 lg:p-4 mb-3 flex items-center gap-3 text-left active:scale-[0.99] transition-transform">
           <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--green-soft)', color: 'var(--green)' }}><ClipboardCheck size={20} /></span>
           <span className="flex-1">
             <span className="block font-semibold">Pantry check</span>
@@ -101,16 +102,17 @@ export default function ThisWeek() {
           </span>
           <ChevronRight size={18} style={{ color: '#A7B1AD' }} />
         </button>
+        </div>
         <p className="text-[14px] mb-3 px-1" style={{ color: 'var(--text-soft)' }}>
           {p.recipes.length} meal{p.recipes.length === 1 ? '' : 's'} · cooking for {p.servings_target}
           {totalLunch > 0 && ` · ${totalLunch} lunch portion${totalLunch === 1 ? '' : 's'}`}
         </p>
         {p.recipes.length ? (
-          <div className="grid gap-3">
+          <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
             {p.recipes.map(r => <MealCard key={r.id} recipe={r} plan={p} onOpen={() => push('recipe', { id: r.id, servings: r.servingsOverride || p.servings_target })} />)}
           </div>
         ) : <Empty icon={CalendarX2} title="No meals in this week" />}
-        <button className="btn btn-danger w-full mt-8" onClick={() => setConfirm(true)}>
+        <button className="btn btn-danger w-full lg:w-auto mt-8" onClick={() => setConfirm(true)}>
           <Trash2 size={17} /> Delete this week
         </button>
       </>

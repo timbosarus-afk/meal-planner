@@ -10,7 +10,7 @@ export default function More() {
   const { go } = useNav();
   const items = [...PINNABLE.filter(t => !bar.includes(t)), 'settings'];
   return (
-    <div className="page">
+    <div className="page narrow">
       <PageHeader title="More" />
       <div className="card overflow-hidden">
         {items.map((key, i) => {

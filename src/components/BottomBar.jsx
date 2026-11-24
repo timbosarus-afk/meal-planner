@@ -4,7 +4,7 @@ import { TABS } from '../lib/tabs.js';
 export default function BottomBar({ tabs, active, onSelect }) {
   const items = [...tabs, 'more'];
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t" style={{ borderColor: 'var(--line)', paddingBottom: 'var(--safe-bottom)' }}>
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t" style={{ borderColor: 'var(--line)', paddingBottom: 'var(--safe-bottom)' }}>
       <div className="max-w-[640px] mx-auto flex">
         {items.map(key => {
           const { short, icon: Icon } = TABS[key];

@@ -52,6 +52,17 @@ button { -webkit-tap-highlight-color: transparent; }
   .select { appearance: none; -webkit-appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231B4D3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; padding-right: 34px; }
 }
 
+/* Desktop: sidebar instead of the bottom bar, wider pages, hover feedback */
+@media (min-width: 1024px) {
+  .page { max-width: 1120px; padding: 36px 40px 56px; }
+  .page.narrow { max-width: 780px; }
+  .page-title { font-size: 34px; }
+}
+@media (hover: hover) {
+  button.card, a.card { transition: box-shadow .15s, transform .1s; }
+  button.card:hover, a.card:hover { box-shadow: var(--shadow-lg); }
+}
+
 @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
