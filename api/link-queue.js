@@ -25,7 +25,7 @@ function setCors(res) {
 // Things nobody buys
 const NEVER_BUY = new Set(['water', 'boiling water', 'cold water', 'warm water', 'hot water', 'ice', 'salt and pepper']);
 
-async function allUnlinked() {
+async function allUnlinked(includeStaples) {
   const [ings, links, pantry, recipes, queue] = await Promise.all([
     supabase.from('recipe_ingredients').select('recipe_id, item'),
     supabase.from('product_links').select('ingredient_key'),
@@ -48,7 +48,7 @@ async function allUnlinked() {
   const byKey = {};
   for (const ing of ings.data) {
     const key = ingredientKey(ing.item);
-    if (!key || linked.has(key) || NEVER_BUY.has(key) || isAlways(key)) continue;
+    if (!key || linked.has(key) || NEVER_BUY.has(key) || (!includeStaples && isAlways(key))) continue;
     const e = (byKey[key] ||= { ingredientKey: key, items: new Set(), recipes: new Set() });
     e.items.add(ing.item);
     if (nameOf[ing.recipe_id]) e.recipes.add(nameOf[ing.recipe_id]);
@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'GET' && req.query.all) {
-      return res.status(200).json(await allUnlinked());
+      return res.status(200).json(await allUnlinked(req.query.staples === '1'));
     }
 
     if (req.method === 'GET') {

@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
     for (const i of ings.data) (byRecipe[i.recipe_id] ||= []).push(i);
     for (const r of data) {
       const c = recipeCost({ ingredients: byRecipe[r.id] || [], linksByKey, isAlways, baseServings: r.servings, targetServings: r.servings });
-      r.cost = { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced };
+      r.cost = { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced, full: c.full };
     }
   } catch (err) {
     console.error('recipe costs failed:', err.message);

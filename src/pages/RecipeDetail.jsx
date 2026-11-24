@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Link2, ListPlus, ChevronLeft, Camera, Search, Clock, Users, Minus, Plus, ListChecks, CookingPot, Check, MoreHorizontal, Trash2, Pencil, ChefHat, CalendarCheck } from 'lucide-react';
 import { PageHeader, Spinner, ErrorBox, useLoad } from '../components/ui.jsx';
 import Segmented from '../components/Segmented.jsx';
+import CostToggle, { useFullCost, pickCost } from '../components/CostToggle.jsx';
 import Rating from '../components/Rating.jsx';
 import RecipeThumb from '../components/RecipeThumb.jsx';
 import Sheet, { ConfirmSheet } from '../components/Sheet.jsx';
@@ -120,6 +121,7 @@ export default function RecipeDetail({ id, servings: initialServings }) {
   const { back } = useNav();
   const rec = useLoad(() => api.recipe(id), [id]);
   const [tab, setTab] = useState('ingredients');
+  const [fullCost] = useFullCost();
   const [target, setTarget] = useState(initialServings || null);
   const [uploading, setUploading] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -173,13 +175,16 @@ export default function RecipeDetail({ id, servings: initialServings }) {
         </span>
       </div>
 
-      {r.cost && (r.cost.total > 0 || r.cost.notPriced > 0) && (() => {
+      {r.cost && (() => {
+        const base = pickCost(r.cost, fullCost);
+        if (!(base.total > 0 || base.notPriced > 0)) return null;
         // Total scales with the servings stepper; per serving stays the same
-        const scaled = { ...r.cost, total: r.cost.servings ? Math.round(r.cost.total * serves / r.cost.servings * 100) / 100 : r.cost.total };
+        const scaled = { ...base, total: r.cost.servings ? Math.round(base.total * serves / r.cost.servings * 100) / 100 : base.total };
         return (
-          <div className="flex items-center gap-2 -mt-2 mb-4 px-1 text-[14px]" style={{ color: 'var(--text-soft)' }}>
-            {costLine(scaled) && <span className="font-semibold" style={{ color: 'var(--green)' }}>{costLine(scaled)}</span>}
-            {r.cost.notPriced > 0 && <span>{costLine(scaled) ? '· ' : ''}{notPricedText(r.cost.notPriced)}</span>}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 -mt-2 mb-4 px-1 text-[14px]" style={{ color: 'var(--text-soft)' }}>
+            {costLine(scaled) && <span className="font-semibold" style={{ color: 'var(--green)' }}>{costLine(scaled)}{fullCost ? ' in full' : ''}</span>}
+            {base.notPriced > 0 && <span>{costLine(scaled) ? '· ' : ''}{notPricedText(base.notPriced)}</span>}
+            <CostToggle className="ml-auto" />
           </div>
         );
       })()}
