@@ -323,7 +323,8 @@
 
   // source: 'week' (the selected week's shopping list), 'queue' (items queued
   // from the app's recipe pages) or 'all' (every unlinked ingredient across
-  // all recipes, most-used first - for linking everything in one go)
+  // all recipes, most-used first - for linking everything in one go) or
+  // 'sizes' (linked items where a smaller pack would save waste)
   const S = { apiUrl: null, weeks: [], weekId: null, source: 'week', list: null, activeKey: null, collapsed: false, skipped: [], msg: '', msgOk: true, busy: false };
   let host = null;
   let root = null;
@@ -337,7 +338,7 @@
 
   async function loadSaved() {
     const s = await chrome.storage.local.get(['apiUrl', 'selectedBatchId', 'panelSource', 'linkingKey', 'panelCollapsed', 'panelSkipped', 'panelCache']);
-    S.source = ['week', 'queue', 'all'].includes(s.panelSource) ? s.panelSource : 'week';
+    S.source = ['week', 'queue', 'all', 'sizes'].includes(s.panelSource) ? s.panelSource : 'week';
     S.apiUrl = s.apiUrl || null;
     S.weekId = s.selectedBatchId || null;
     S.activeKey = s.linkingKey || null;
@@ -367,21 +368,33 @@
         S.weekId = (sent || S.weeks[0] || {}).id || null;
         await chrome.storage.local.set({ selectedBatchId: S.weekId });
       }
-      if (S.source !== 'week') {
+      if (S.source === 'sizes') {
+        const rows = await api('/api/link-queue?sizes=1');
+        const amt = (n, u) => n >= 1000 ? `${n / 1000}${u === 'g' ? 'kg' : 'l'}` : `${n}${u}`;
+        S.list = {
+          unlinked: rows.map(r => ({
+            key: r.ingredientKey,
+            items: r.recipes || [],
+            note: `Recipes use up to ${amt(r.need.amount, r.need.unit)}, smallest you've linked is ${amt(r.smallest.size, r.smallest.unit)}.`
+          })),
+          linked: []
+        };
+        S.sizesCount = rows.length;
+      } else if (S.source !== 'week') {
         const [rows, links] = await Promise.all([api('/api/link-queue?all=1'), api('/api/product-links')]);
         const todo = S.source === 'queue' ? rows.filter(r => r.queued) : rows;
         S.list = {
           // "for:" shows the recipes that use it, which is what matters here
           unlinked: todo.map(r => ({ key: r.ingredientKey, items: r.recipes?.length ? r.recipes : (r.items || []) })),
           linked: S.source === 'all'
-            ? links.map(l => ({ key: l.ingredient_key, productName: l.product_name, productUrl: l.product_url, productSlug: l.product_slug, items: [], price: l.price != null ? Number(l.price) : null, nectarPrice: l.nectar_price != null ? Number(l.nectar_price) : null }))
+            ? links.map(l => ({ id: l.id, key: l.ingredient_key, productName: l.product_name, productUrl: l.product_url, productSlug: l.product_slug, items: [], price: l.price != null ? Number(l.price) : null, nectarPrice: l.nectar_price != null ? Number(l.nectar_price) : null }))
             : []
         };
         S.queueCount = rows.filter(r => r.queued).length;
       } else if (S.weekId) {
         const d = await api(`/api/weekly-plan-shopping-list?id=${encodeURIComponent(S.weekId)}`);
         S.list = {
-          linked: (d.basket || []).map(b => ({ key: b.ingredientKey, productName: b.productName, productUrl: b.productUrl, productSlug: b.productSlug, items: b.items || [], price: b.price ?? null, nectarPrice: b.nectarPrice ?? null })),
+          linked: (d.basket || []).map(b => ({ id: b.linkId, key: b.ingredientKey, productName: b.productName, productUrl: b.productUrl, productSlug: b.productSlug, items: b.items || [], price: b.price ?? null, nectarPrice: b.nectarPrice ?? null })),
           unlinked: (d.unlinked || []).map(u => ({ key: u.ingredientKey, items: u.items || [] }))
         };
       } else {
@@ -475,6 +488,31 @@
     }
   }
 
+  // Remove one linked product (wrong item, or a size you don't want). If it
+  // was the only one, the ingredient goes back to needing a link.
+  async function unlink(id) {
+    if (!id || S.busy) return;
+    const L = S.list || { linked: [], unlinked: [] };
+    const entry = L.linked.find(l => l.id === id);
+    if (!entry) return;
+    S.busy = true;
+    try {
+      await api('/api/product-links', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      L.linked = L.linked.filter(l => l.id !== id);
+      if (!L.linked.some(l => l.key === entry.key) && S.source !== 'sizes' && !L.unlinked.some(u => u.key === entry.key)) {
+        L.unlinked.unshift({ key: entry.key, items: entry.items || [] });
+      }
+      S.list = L;
+      await saveCache();
+      setMsg(`Removed ${entry.productName || 'that product'} from "${entry.key}".`);
+    } catch (err) {
+      setMsg(`Couldn't remove it: ${err.message}`, false);
+    }
+    S.busy = false;
+    render();
+    injectCardButtons();
+  }
+
   async function linkProduct({ slug, name, packSize, packUnit, markUsed = false, prices = {} }) {
     const key = S.activeKey;
     if (!key) { setMsg('Pick an item from the list first.', false); render(); return; }
@@ -493,12 +531,12 @@
       const L = S.list || { linked: [], unlinked: [] };
       const entry = L.unlinked.find(u => u.key === key) || L.linked.find(l => l.key === key) || { key, items: [] };
       L.unlinked = L.unlinked.filter(u => u.key !== key);
-      L.linked = L.linked.filter(l => l.key !== key).concat({ key, items: entry.items, productName: name, productUrl: data.product_url, productSlug: slug, price: prices.price ?? null, nectarPrice: prices.nectarPrice ?? null });
+      L.linked = L.linked.filter(l => !(l.key === key && l.productSlug === slug)).concat({ id: data.id, key, items: entry.items, productName: name, productUrl: data.product_url, productSlug: slug, price: prices.price ?? null, nectarPrice: prices.nectarPrice ?? null });
       S.list = L;
       S.skipped = S.skipped.filter(k => k !== key);
       await chrome.storage.local.set({ panelSkipped: S.skipped });
       await saveCache();
-      setMsg(`Linked "${key}" to ${name || slug}.`);
+      setMsg(S.source === 'sizes' ? `Added ${name || slug} as another size for "${key}".` : `Linked "${key}" to ${name || slug}.`);
     } catch (err) {
       setMsg(err.message, false);
     }
@@ -548,6 +586,8 @@
     li.on { font-weight: 700; color: #1B4D3E; }
     li.skipped { color: #9AA394; }
     li.done { display: flex; gap: 6px; align-items: flex-start; }
+    li.done > span:last-child { order: 2; flex: 1; }
+    .unlink { order: 3; background: none; color: #B3261E; font-weight: 600; font-size: 11px; padding: 0 2px; text-decoration: underline; }
     .tick { color: #1B4D3E; flex: none; margin-top: 1px; }
     li.empty { color: #9AA394; cursor: default; }
     .textbtn { background: none; color: #6B7566; font-weight: 600; font-size: 12px; text-decoration: underline; padding: 0; align-self: flex-start; }
@@ -611,10 +651,12 @@
               <label>Pack size<input id="ps" type="number" step="any" value="${esc(p.size)}"></label>
               <label>Unit<select id="pu">${['g', 'ml', 'each'].map(u => `<option${u === p.unit ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
             </div>
-            <button class="primary" data-a="link-page"${S.busy ? ' disabled' : ''}>Link to "${esc(active.key)}"</button>
+            <button class="primary" data-a="link-page"${S.busy ? ' disabled' : ''}>${S.source === 'sizes' ? 'Add this size to' : 'Link to'} "${esc(active.key)}"</button>
           </div>`;
       } else if (isSearchPage()) {
-        action = '<p class="hint">Click <b>Link this</b> under the product you want, or just <b>Add</b> it to your basket.</p>';
+        action = S.source === 'sizes'
+          ? '<p class="hint">Click <b>Add this size</b> under a smaller pack. Your bigger one stays linked, and each week the cheapest mix that covers the recipes gets picked.</p>'
+          : '<p class="hint">Click <b>Link this</b> under the product you want, or just <b>Add</b> it to your basket.</p>';
       } else {
         action = '<button class="primary" data-a="search">Search Sainsbury\'s for it</button>';
       }
@@ -622,6 +664,7 @@
       activeHtml = `<div class="label">Now finding</div>
         <div class="key">${esc(active.key)}</div>
         ${showItems ? `<span class="sub">for: ${esc(active.items.join(', '))}</span>` : ''}
+        ${active.note ? `<span class="sub">${esc(active.note)}</span>` : ''}
         ${action}
         <div class="row">
           <button class="secondary" data-a="next">Get next</button>
@@ -633,19 +676,22 @@
     } else {
       activeHtml = S.source === 'week'
         ? '<p class="hint">Everything on this list is linked. Use <b>Add all to basket</b> in the extension popup.</p>'
-        : `<p class="hint">${S.source === 'all' ? 'Every ingredient across your recipes is linked.' : 'Nothing left in the queue.'}</p>`;
+        : `<p class="hint">${S.source === 'all' ? 'Every ingredient across your recipes is linked.' : S.source === 'sizes' ? 'No items need a smaller size.' : 'Nothing left in the queue.'}</p>`;
     }
 
     const weekOpts = S.weeks.map(w => `<option value="week:${esc(w.id)}"${S.source === 'week' && w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('')
       + `<option value="queue"${S.source === 'queue' ? ' selected' : ''}>Queued from app${S.queueCount != null ? ` (${S.queueCount})` : ''}</option>`
-      + `<option value="all"${S.source === 'all' ? ' selected' : ''}>All recipes - link everything</option>`;
-    const progress = S.source === 'queue'
+      + `<option value="all"${S.source === 'all' ? ' selected' : ''}>All recipes - link everything</option>`
+      + `<option value="sizes"${S.source === 'sizes' ? ' selected' : ''}>Needs a smaller size${S.sizesCount != null ? ` (${S.sizesCount})` : ''}</option>`;
+    const progress = S.source === 'sizes'
+      ? `${L.unlinked.length} item${L.unlinked.length === 1 ? '' : 's'} where a smaller pack would save waste`
+      : S.source === 'queue'
       ? `${L.unlinked.length} left in the queue`
       : `${done} of ${total} linked${S.source === 'all' ? ' across all recipes' : ''}`;
     const todo = L.unlinked.map(u =>
       `<li class="todo${u.key === S.activeKey ? ' on' : ''}${S.skipped.includes(u.key) ? ' skipped' : ''}" data-key="${esc(u.key)}">${esc(u.key)}${S.skipped.includes(u.key) ? ' <span class="sub" style="display:inline">(skipped)</span>' : ''}</li>`).join('');
     const linked = L.linked.map(l =>
-      `<li class="done" data-url="${esc(l.productUrl || '')}"><span class="tick">${TICK}</span><span><span>${esc(l.key)}</span><span class="sub">${esc(l.productName || '')}${(l.price != null || l.nectarPrice != null) ? ` · ${esc(priceLabel(l))}` : ''}</span></span></li>`).join('');
+      `<li class="done" data-url="${esc(l.productUrl || '')}"><span class="tick">${TICK}</span>${l.id ? `<button class="unlink" data-id="${esc(l.id)}" title="Remove this link (wrong product or size)">Remove</button>` : ''}<span><span>${esc(l.key)}</span><span class="sub">${esc(l.productName || '')}${(l.price != null || l.nectarPrice != null) ? ` · ${esc(priceLabel(l))}` : ''}</span></span></li>`).join('');
 
     root.innerHTML = `<style>${CSS}</style>
       <div class="panel">
@@ -694,6 +740,7 @@
     }));
     root.querySelectorAll('li.todo').forEach(li => li.addEventListener('click', () => { setMsg(''); setActive(li.dataset.key, true); }));
     root.querySelectorAll('li.done').forEach(li => li.addEventListener('click', () => { if (li.dataset.url) location.href = pageUrl(li.dataset.url); }));
+    root.querySelectorAll('.unlink').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); unlink(btn.dataset.id); }));
     const wk = root.getElementById('week');
     if (wk) wk.addEventListener('change', async () => {
       const v = wk.value;
@@ -730,7 +777,7 @@
         card.appendChild(btn);
       }
       const isLinked = !!S.list?.linked.find(l => l.key === S.activeKey && l.productSlug === info.slug);
-      const label = isLinked ? `Linked to ${S.activeKey}` : `Link this to ${S.activeKey}`;
+      const label = isLinked ? `Linked to ${S.activeKey}` : (S.source === 'sizes' ? `Add this size to ${S.activeKey}` : `Link this to ${S.activeKey}`);
       if (btn.textContent !== label) btn.textContent = label; // only touch the DOM on change (MutationObserver)
     });
   }

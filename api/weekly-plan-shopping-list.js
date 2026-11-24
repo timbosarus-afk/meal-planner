@@ -44,7 +44,7 @@
 // with outOfStock: true.
 
 const { supabase } = require('../lib/db');
-const { ingredientKey, packsNeeded } = require('../lib/ingredient-key');
+const { ingredientKey, choosePacks } = require('../lib/ingredient-key');
 const { alwaysMatcher, weekCost, weekServings } = require('../lib/costs');
 
 function setCors(res) {
@@ -94,24 +94,30 @@ function buildBasket(shoppingList, linkByKey) {
   const basket = [];
   const unlinked = [];
   for (const [iKey, items] of Object.entries(byKey)) {
-    const link = linkByKey[iKey];
-    if (link) {
-      basket.push({
-        linkId: link.id,
-        ingredientKey: iKey,
-        productUrl: link.product_url,
-        productSlug: link.product_slug,
-        productName: link.product_name,
-        packSize: link.pack_size,
-        packUnit: link.pack_unit,
-        packs: packsNeeded(items.map(i => ({ quantity: i.quantity, unit: i.unit })), link),
-        items: items.map(i => i.item),
-        // Prices saved by the extension (null until seen). nectarPrice is
-        // what you pay when there's a Nectar offer; use it first for costs.
-        price: link.price != null ? Number(link.price) : null,
-        nectarPrice: link.nectar_price != null ? Number(link.nectar_price) : null,
-        priceUpdatedAt: link.price_updated_at || null
-      });
+    const links = linkByKey[iKey];
+    if (links && links.length) {
+      // Several sizes can be linked: buy the cheapest mix that covers the need
+      // (e.g. 300ml cream instead of 1kg). One basket entry per product used.
+      const needs = items.map(i => ({ quantity: i.quantity, unit: i.unit }));
+      for (const { link, packs } of choosePacks(needs, links)) {
+        basket.push({
+          linkId: link.id,
+          ingredientKey: iKey,
+          productUrl: link.product_url,
+          productSlug: link.product_slug,
+          productName: link.product_name,
+          packSize: link.pack_size,
+          packUnit: link.pack_unit,
+          packs,
+          items: items.map(i => i.item),
+          // Prices saved by the extension (null until seen). nectarPrice is
+          // what you pay when there's a Nectar offer; use it first for costs.
+          price: link.price != null ? Number(link.price) : null,
+          nectarPrice: link.nectar_price != null ? Number(link.nectar_price) : null,
+          priceUpdatedAt: link.price_updated_at || null,
+          sizesLinked: links.length
+        });
+      }
     } else {
       unlinked.push({ ingredientKey: iKey, items: items.map(i => i.item) });
     }
@@ -204,7 +210,9 @@ module.exports = async (req, res) => {
     // the list still works, it just won't have basket data.
     if (linksError) console.error('product_links lookup failed:', linksError.message);
 
-    const linkByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
+    // ingredient_key -> [links]: one ingredient can have several pack sizes
+    const linkByKey = {};
+    for (const l of links || []) (linkByKey[l.ingredient_key] ||= []).push(l);
     const outOfStock = staples.filter(s => s.kind === 'always' && s.out_of_stock);
 
     const { data: curatedRows, error: curError } = await supabase
