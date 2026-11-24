@@ -45,7 +45,7 @@
 
 const { supabase } = require('../lib/db');
 const { ingredientKey, choosePacks } = require('../lib/ingredient-key');
-const { alwaysMatcher, weekCost, weekServings } = require('../lib/costs');
+const { alwaysMatcher, weekCost, weekServings, recipeCost } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -146,6 +146,25 @@ function addOutOfStock(list, outOfStock, linkByKey) {
   return list;
 }
 
+
+// What the week's meals cost in total (each meal's fair share of every pack),
+// as opposed to the till total. "mealsFull" also counts food you already have
+// and your staples.
+function mealTotals(planRecipes, ingredients, staples, linkByKey, servingsTarget) {
+  const isAlways = alwaysMatcher(staples.filter(s => s.kind === 'always').map(s => s.item_name));
+  let meals = 0, mealsFull = 0, notPriced = 0, fullNotPriced = 0;
+  for (const pr of planRecipes) {
+    const c = recipeCost({
+      ingredients: ingredients.filter(i => i.recipe_id === pr.recipe_id),
+      linksByKey: linkByKey, isAlways,
+      baseServings: pr.recipes?.servings, targetServings: pr.servings_override || servingsTarget
+    });
+    meals += c.total; mealsFull += c.full.total; notPriced += c.notPriced; fullNotPriced += c.full.notPriced;
+  }
+  const r2 = n => Math.round(n * 100) / 100;
+  return { meals: r2(meals), mealsFull: r2(mealsFull), mealsNotPriced: notPriced, mealsFullNotPriced: fullNotPriced };
+}
+
 module.exports = async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
@@ -235,7 +254,7 @@ module.exports = async (req, res) => {
       res.status(200).json({
         planId, curated: true, servingsTarget: plan.servings_target, status: plan.status,
         recipeCount: planRecipes.length, shoppingList: list, staples: [], basket, unlinked,
-        costs: weekCost({ basket, unlinked, servings: weekServings(planRecipes, plan.servings_target) })
+        costs: { ...weekCost({ basket, unlinked, servings: weekServings(planRecipes, plan.servings_target) }), ...mealTotals(planRecipes, ingredients, staples, linkByKey, plan.servings_target) }
       });
       return;
     }
@@ -325,7 +344,7 @@ module.exports = async (req, res) => {
       basket,
       unlinked,
       // What you pay at the till (whole packs); see lib/costs.js
-      costs: weekCost({ basket, unlinked, servings: weekServings(planRecipes, plan.servings_target) })
+      costs: { ...weekCost({ basket, unlinked, servings: weekServings(planRecipes, plan.servings_target) }), ...mealTotals(planRecipes, ingredients, staples, linkByKey, plan.servings_target) }
     });
   } catch (err) {
     console.error('Failed to build plan shopping list:', err);

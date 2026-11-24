@@ -390,7 +390,7 @@
         };
         S.flaggedCount = S.list.flagged.length;
       } else if (S.source !== 'week') {
-        const [rows, links] = await Promise.all([api('/api/link-queue?all=1'), api('/api/product-links')]);
+        const [rows, links] = await Promise.all([api('/api/link-queue?all=1&staples=1'), api('/api/product-links')]);
         const todo = S.source === 'queue' ? rows.filter(r => r.queued) : rows;
         S.list = {
           // "for:" shows the recipes that use it, which is what matters here

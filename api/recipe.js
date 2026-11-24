@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
         baseServings: recipe.servings, targetServings: recipe.servings
       });
       const withFlags = ingredients.map((i, k) => ({ ...i, ingredientKey: c.lines[k].key, linked: c.lines[k].linked, alwaysHave: c.lines[k].alwaysHave, cost: c.lines[k].cost }));
-      res.status(200).json({ ...recipe, ingredients: withFlags, cost: { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced } });
+      res.status(200).json({ ...recipe, ingredients: withFlags, cost: { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced, full: c.full } });
     } catch (err) {
       console.error('Failed to load recipe detail:', err);
       res.status(500).json({ error: err.message });

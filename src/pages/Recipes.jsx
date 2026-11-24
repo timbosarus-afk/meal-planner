@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import CostToggle, { useFullCost, pickCost } from '../components/CostToggle.jsx';
 import { Search, Star, BookOpen, X } from 'lucide-react';
 import { PageHeader, Spinner, ErrorBox, Empty, useLoad } from '../components/ui.jsx';
 import RecipeThumb from '../components/RecipeThumb.jsx';
@@ -15,6 +16,7 @@ export default function Recipes() {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState(null);
   const [sort, setSort] = useState('recent');
+  const [fullCost] = useFullCost();
 
   const filters = useMemo(() => {
     if (!list.data) return [];
@@ -32,9 +34,9 @@ export default function Recipes() {
     if (sort === 'rating') out = [...out].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     if (sort === 'az') out = [...out].sort((a, b) => displayName(a).localeCompare(displayName(b)));
     // Unpriced recipes go last
-    if (sort === 'cheap') out = [...out].sort((a, b) => (a.cost?.perServing ?? Infinity) - (b.cost?.perServing ?? Infinity));
+    if (sort === 'cheap') out = [...out].sort((a, b) => (pickCost(a.cost, fullCost)?.perServing ?? Infinity) - (pickCost(b.cost, fullCost)?.perServing ?? Infinity));
     return out;
-  }, [list.data, q, filter, sort]);
+  }, [list.data, q, filter, sort, fullCost]);
 
   return (
     <div className="page">
@@ -46,6 +48,7 @@ export default function Recipes() {
         <input className="input pl-10" placeholder="Search recipes" value={q} onChange={e => setQ(e.target.value)} />
         {q && <button aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5" onClick={() => setQ('')}><X size={16} /></button>}
       </div>
+      <div className="mb-3 px-1"><CostToggle /></div>
       {filters.length > 0 && (
         <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-3 no-scrollbar">
           {filters.map(f => (
@@ -68,12 +71,12 @@ export default function Recipes() {
                     {r.cuisine && <span className="truncate">{r.cuisine}</span>}
                     {r.rating ? <span className="flex items-center gap-0.5 ml-auto"><Star size={12} fill="currentColor" style={{ color: 'var(--amber)' }} />{r.rating}</span> : null}
                   </div>
-                  {r.cost?.perServing > 0 && (
-                    <div className="mt-1.5 text-[13px]" title={r.cost.notPriced ? `${r.cost.notPriced} ingredient${r.cost.notPriced === 1 ? '' : 's'} not priced yet, so this is a little low` : 'Rough cost of what the meal uses'}>
-                      <span className="font-bold" style={{ color: 'var(--green)' }}>~{money(r.cost.perServing)}</span>
-                      <span style={{ color: 'var(--text-soft)' }}> a serving{r.cost.notPriced ? '+' : ''}</span>
+                  {pickCost(r.cost, fullCost)?.perServing > 0 && (() => { const c = pickCost(r.cost, fullCost); return (
+                    <div className="mt-1.5 text-[13px]" title={c.notPriced ? `${c.notPriced} ingredient${c.notPriced === 1 ? '' : 's'} not priced yet, so this is a little low` : (fullCost ? 'Full cost of the meal, including what you already have' : 'Rough cost of what you buy for the meal')}>
+                      <span className="font-bold" style={{ color: 'var(--green)' }}>~{money(c.perServing)}</span>
+                      <span style={{ color: 'var(--text-soft)' }}> a serving{fullCost ? ' in full' : ''}{c.notPriced ? '+' : ''}</span>
                     </div>
-                  )}
+                  ); })()}
                 </div>
               </button>
             ))}

@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
           ...pr.recipes,
           servingsOverride: pr.servings_override,
           ingredients: ings,
-          cost: { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced }
+          cost: { total: c.total, perServing: c.perServing, servings: c.servings, notPriced: c.notPriced, full: c.full }
         };
       });
 

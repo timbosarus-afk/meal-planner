@@ -7,6 +7,7 @@ import { ConfirmSheet } from '../components/Sheet.jsx';
 import { useWeeks } from '../lib/weeks.jsx';
 import { useNav } from '../lib/nav.js';
 import { api } from '../lib/api.js';
+import CostToggle, { useFullCost, pickCost } from '../components/CostToggle.jsx';
 import { displayName, fmtWeek, pickCurrentWeek, money, costLine, notPricedText } from '../lib/format.js';
 
 // Extra portions beyond the week's target are cooked for lunch the next day.
@@ -14,6 +15,7 @@ export const extraLunch = (r, plan) => r.servingsOverride && plan ? Math.max(0, 
 
 function MealCard({ recipe, plan, onOpen }) {
   const lunch = extraLunch(recipe, plan);
+  const [fullCost] = useFullCost();
   // Cooked since the plan was made (or since the week started, if earlier)
   const since = [plan.week_start_date, (plan.created_at || '').slice(0, 10)].filter(Boolean).sort()[0];
   const cooked = recipe.last_cooked && recipe.last_cooked >= since;
@@ -28,12 +30,12 @@ function MealCard({ recipe, plan, onOpen }) {
           {recipe.cuisine && <span className="truncate">{recipe.cuisine}</span>}
           {recipe.rating ? <span className="flex items-center gap-0.5"><Star size={13} fill="currentColor" style={{ color: 'var(--amber)' }} />{recipe.rating}</span> : null}
         </div>
-        {recipe.cost && (recipe.cost.total > 0 || recipe.cost.notPriced > 0) && (
+        {(() => { const c = pickCost(recipe.cost, fullCost); return c && (c.total > 0 || c.notPriced > 0) && (
           <div className="mt-1 text-[13px]" style={{ color: 'var(--text-soft)' }}>
-            {costLine(recipe.cost) && <span className="font-semibold" style={{ color: 'var(--green)' }}>{costLine(recipe.cost)}</span>}
-            {recipe.cost.notPriced > 0 && <span>{costLine(recipe.cost) ? ' · ' : ''}{notPricedText(recipe.cost.notPriced)}</span>}
+            {costLine(c) && <span className="font-semibold" style={{ color: 'var(--green)' }}>{costLine(c)}</span>}
+            {c.notPriced > 0 && <span>{costLine(c) ? ' · ' : ''}{notPricedText(c.notPriced)}</span>}
           </div>
-        )}
+        ); })()}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {lunch > 0 && <span className="chip" style={{ background: '#FFF3DC', color: '#8A5A00' }}><Sandwich size={13} />+{lunch} for lunch tomorrow</span>}
           {cooked && <span className="chip"><CheckCircle2 size={13} />Cooked</span>}
@@ -45,18 +47,27 @@ function MealCard({ recipe, plan, onOpen }) {
 
 // What you pay at the till for the week (whole packs), from the shopping list API
 function WeekCost({ c }) {
+  const [full] = useFullCost();
   if (!c) return null;
+  const hasMeals = c.meals != null;
   return (
     <div className="card p-4 mb-3 flex items-center gap-3">
       <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--green-soft)', color: 'var(--green)' }}><PoundSterling size={20} /></span>
       <div className="flex-1 min-w-0">
         <div className="font-display font-extrabold text-[22px] leading-tight" style={{ color: 'var(--green)' }}>
-          {money(c.total)} <span className="text-[14px] font-semibold" style={{ color: 'var(--text-soft)' }}>this week</span>
+          {money(c.total)} <span className="text-[14px] font-semibold" style={{ color: 'var(--text-soft)' }}>to buy this week</span>
         </div>
         <div className="text-[13px]" style={{ color: 'var(--text-soft)' }}>
           {c.perServing != null && `${money(c.perServing)} a serving (${c.servings} servings)`}
           {c.notPriced > 0 && <span style={{ color: '#8A5A00' }}>{c.perServing != null ? ' · ' : ''}+{c.notPriced} item{c.notPriced === 1 ? '' : 's'} not priced</span>}
         </div>
+        {hasMeals && (
+          <div className="text-[13px] mt-1" style={{ color: 'var(--text-soft)' }}>
+            Meals cost <b style={{ color: 'var(--text)' }}>{money(full ? c.mealsFull : c.meals)}</b>{full ? ' in full, including what you already have' : ' of what you buy'}
+            {(full ? c.mealsFullNotPriced : c.mealsNotPriced) > 0 && <span style={{ color: '#8A5A00' }}> · +{full ? c.mealsFullNotPriced : c.mealsNotPriced} not priced</span>}
+          </div>
+        )}
+        <div className="mt-1.5"><CostToggle /></div>
       </div>
     </div>
   );
