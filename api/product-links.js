@@ -2,14 +2,16 @@
 // GET                      -> all links (optionally ?key=red%20onion for one)
 // POST { ingredientName | ingredientKey, productUrl, productName,
 //        packSize, packUnit, defaultQty, markUsed?, price?, nectarPrice? }
-//                          -> create or replace the link
+//                          -> link a product. One ingredient can have several
+//                             products (pack sizes); linking the same product
+//                             again updates it, a different one adds a size
 //        (markUsed: true also stamps last_used_at; sent when added to basket)
 // PATCH { ids: [...] }     -> stamp last_used_at (called after a basket run)
 // PATCH { prices: [{ slug, price, nectarPrice }] }
 //                          -> update saved prices for every link to that product
 //                             (from link time, basket runs, product page visits
 //                             and the panel's "Update prices")
-// DELETE { id }            -> remove a link (re-link from scratch)
+// DELETE { id }            -> remove one linked product/size
 
 const { supabase } = require('../lib/db');
 const { ingredientKey } = require('../lib/ingredient-key');
@@ -88,7 +90,7 @@ module.exports = async (req, res) => {
 
     const { data, error } = await supabase
       .from('product_links')
-      .upsert(row, { onConflict: 'ingredient_key' })
+      .upsert(row, { onConflict: 'ingredient_key,product_slug' })
       .select()
       .single();
     if (error) { res.status(500).json({ error: error.message }); return; }

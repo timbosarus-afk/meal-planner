@@ -13,7 +13,7 @@
 // way and there's no separate "in use" check needed here).
 
 const { supabase } = require('../lib/db');
-const { alwaysMatcher, recipeCost } = require('../lib/costs');
+const { alwaysMatcher, recipeCost, groupLinks } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
       ]);
       const c = recipeCost({
         ingredients,
-        linksByKey: Object.fromEntries((links || []).map(l => [l.ingredient_key, l])),
+        linksByKey: groupLinks(links),
         isAlways: alwaysMatcher((always || []).map(a => a.item_name)),
         baseServings: recipe.servings, targetServings: recipe.servings
       });

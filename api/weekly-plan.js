@@ -16,7 +16,7 @@
 // is already 'ordered' — this endpoint just performs the removal.
 
 const { supabase } = require('../lib/db');
-const { alwaysMatcher, recipeCost } = require('../lib/costs');
+const { alwaysMatcher, recipeCost, groupLinks } = require('../lib/costs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
         supabase.from('product_links').select('ingredient_key, pack_size, pack_unit, price, nectar_price'),
         supabase.from('pantry_items').select('item_name').eq('kind', 'always')
       ]);
-      const linksByKey = Object.fromEntries((links || []).map(l => [l.ingredient_key, l]));
+      const linksByKey = groupLinks(links);
       const isAlways = alwaysMatcher((always || []).map(a => a.item_name));
 
       const recipes = planRecipes.map(pr => {
