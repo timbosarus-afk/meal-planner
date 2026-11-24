@@ -321,7 +321,10 @@
 
   // ---- Side panel: state --------------------------------------------------
 
-  const S = { apiUrl: null, weeks: [], weekId: null, list: null, activeKey: null, collapsed: false, skipped: [], msg: '', msgOk: true, busy: false };
+  // source: 'week' (the selected week's shopping list), 'queue' (items queued
+  // from the app's recipe pages) or 'all' (every unlinked ingredient across
+  // all recipes, most-used first - for linking everything in one go)
+  const S = { apiUrl: null, weeks: [], weekId: null, source: 'week', list: null, activeKey: null, collapsed: false, skipped: [], msg: '', msgOk: true, busy: false };
   let host = null;
   let root = null;
 
@@ -333,13 +336,14 @@
   }
 
   async function loadSaved() {
-    const s = await chrome.storage.local.get(['apiUrl', 'selectedBatchId', 'linkingKey', 'panelCollapsed', 'panelSkipped', 'panelCache']);
+    const s = await chrome.storage.local.get(['apiUrl', 'selectedBatchId', 'panelSource', 'linkingKey', 'panelCollapsed', 'panelSkipped', 'panelCache']);
+    S.source = ['week', 'queue', 'all'].includes(s.panelSource) ? s.panelSource : 'week';
     S.apiUrl = s.apiUrl || null;
     S.weekId = s.selectedBatchId || null;
     S.activeKey = s.linkingKey || null;
     S.collapsed = !!s.panelCollapsed;
     S.skipped = s.panelSkipped || [];
-    if (s.panelCache && s.panelCache.weekId === S.weekId) {
+    if (s.panelCache && s.panelCache.weekId === S.weekId && (s.panelCache.source || 'week') === S.source) {
       S.list = s.panelCache.list;
       S.weeks = s.panelCache.weeks || [];
     }
@@ -347,7 +351,7 @@
 
   async function saveCache() {
     await chrome.storage.local.set({
-      panelCache: { weekId: S.weekId, weeks: S.weeks, list: S.list },
+      panelCache: { weekId: S.weekId, source: S.source, weeks: S.weeks, list: S.list },
       unlinkedKeys: (S.list?.unlinked || []).map(u => u.key)
     });
   }
@@ -363,7 +367,18 @@
         S.weekId = (sent || S.weeks[0] || {}).id || null;
         await chrome.storage.local.set({ selectedBatchId: S.weekId });
       }
-      if (S.weekId) {
+      if (S.source !== 'week') {
+        const [rows, links] = await Promise.all([api('/api/link-queue?all=1'), api('/api/product-links')]);
+        const todo = S.source === 'queue' ? rows.filter(r => r.queued) : rows;
+        S.list = {
+          // "for:" shows the recipes that use it, which is what matters here
+          unlinked: todo.map(r => ({ key: r.ingredientKey, items: r.recipes?.length ? r.recipes : (r.items || []) })),
+          linked: S.source === 'all'
+            ? links.map(l => ({ key: l.ingredient_key, productName: l.product_name, productUrl: l.product_url, productSlug: l.product_slug, items: [], price: l.price != null ? Number(l.price) : null, nectarPrice: l.nectar_price != null ? Number(l.nectar_price) : null }))
+            : []
+        };
+        S.queueCount = rows.filter(r => r.queued).length;
+      } else if (S.weekId) {
         const d = await api(`/api/weekly-plan-shopping-list?id=${encodeURIComponent(S.weekId)}`);
         S.list = {
           linked: (d.basket || []).map(b => ({ key: b.ingredientKey, productName: b.productName, productUrl: b.productUrl, productSlug: b.productSlug, items: b.items || [], price: b.price ?? null, nectarPrice: b.nectarPrice ?? null })),
@@ -616,10 +631,17 @@
     } else if (L.unlinked.length) {
       activeHtml = `<button class="primary" data-a="next">Start linking (${L.unlinked.length} to go)</button>`;
     } else {
-      activeHtml = '<p class="hint">Everything on this list is linked. Use <b>Add all to basket</b> in the extension popup.</p>';
+      activeHtml = S.source === 'week'
+        ? '<p class="hint">Everything on this list is linked. Use <b>Add all to basket</b> in the extension popup.</p>'
+        : `<p class="hint">${S.source === 'all' ? 'Every ingredient across your recipes is linked.' : 'Nothing left in the queue.'}</p>`;
     }
 
-    const weekOpts = S.weeks.map(w => `<option value="${esc(w.id)}"${w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('');
+    const weekOpts = S.weeks.map(w => `<option value="week:${esc(w.id)}"${S.source === 'week' && w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('')
+      + `<option value="queue"${S.source === 'queue' ? ' selected' : ''}>Queued from app${S.queueCount != null ? ` (${S.queueCount})` : ''}</option>`
+      + `<option value="all"${S.source === 'all' ? ' selected' : ''}>All recipes - link everything</option>`;
+    const progress = S.source === 'queue'
+      ? `${L.unlinked.length} left in the queue`
+      : `${done} of ${total} linked${S.source === 'all' ? ' across all recipes' : ''}`;
     const todo = L.unlinked.map(u =>
       `<li class="todo${u.key === S.activeKey ? ' on' : ''}${S.skipped.includes(u.key) ? ' skipped' : ''}" data-key="${esc(u.key)}">${esc(u.key)}${S.skipped.includes(u.key) ? ' <span class="sub" style="display:inline">(skipped)</span>' : ''}</li>`).join('');
     const linked = L.linked.map(l =>
@@ -629,8 +651,8 @@
       <div class="panel">
         <header><span class="title">Meal planner</span><button class="icon" data-a="collapse" title="Minimise">${MINIMISE}</button></header>
         <div class="body">
-          ${S.weeks.length > 1 ? `<select id="week">${weekOpts}</select>` : ''}
-          <div><div class="bar"><span style="width:${total ? Math.round(done / total * 100) : 0}%"></span></div><span class="sub">${done} of ${total} linked</span></div>
+          <select id="week" title="Which list to work through">${weekOpts}</select>
+          <div><div class="bar"><span style="width:${total ? Math.round(done / total * 100) : 0}%"></span></div><span class="sub">${esc(progress)}</span></div>
           <div class="active">${activeHtml}</div>
           ${S.msg ? `<div class="msg ${S.msgOk ? 'ok' : 'err'}">${esc(S.msg)}</div>` : ''}
           <details${!S.activeKey && L.unlinked.length ? ' open' : ''}><summary>Needs linking (${L.unlinked.length})</summary><ul>${todo || '<li class="empty">Nothing left</li>'}</ul></details>
@@ -674,10 +696,12 @@
     root.querySelectorAll('li.done').forEach(li => li.addEventListener('click', () => { if (li.dataset.url) location.href = pageUrl(li.dataset.url); }));
     const wk = root.getElementById('week');
     if (wk) wk.addEventListener('change', async () => {
-      S.weekId = wk.value;
+      const v = wk.value;
+      if (v.startsWith('week:')) { S.source = 'week'; S.weekId = v.slice(5); }
+      else S.source = v;
       S.skipped = [];
       setMsg('');
-      await chrome.storage.local.set({ selectedBatchId: S.weekId, panelSkipped: [] });
+      await chrome.storage.local.set({ panelSource: S.source, selectedBatchId: S.weekId, panelSkipped: [] });
       refresh();
     });
   }
