@@ -325,7 +325,7 @@
   // from the app's recipe pages) or 'all' (every unlinked ingredient across
   // all recipes, most-used first - for linking everything in one go) or
   // 'sizes' (linked items where a smaller pack would save waste)
-  const S = { apiUrl: null, weeks: [], weekId: null, source: 'week', list: null, activeKey: null, collapsed: false, skipped: [], msg: '', msgOk: true, busy: false };
+  const S = { apiUrl: null, weeks: [], weekId: null, source: 'week', list: null, activeKey: null, collapsed: false, skipped: [], noSizes: [], q: '', msg: '', msgOk: true, busy: false };
   let host = null;
   let root = null;
 
@@ -337,13 +337,14 @@
   }
 
   async function loadSaved() {
-    const s = await chrome.storage.local.get(['apiUrl', 'selectedBatchId', 'panelSource', 'linkingKey', 'panelCollapsed', 'panelSkipped', 'panelCache']);
-    S.source = ['week', 'queue', 'all', 'sizes'].includes(s.panelSource) ? s.panelSource : 'week';
+    const s = await chrome.storage.local.get(['apiUrl', 'selectedBatchId', 'panelSource', 'linkingKey', 'panelCollapsed', 'panelSkipped', 'panelCache', 'noOtherSizes']);
+    S.source = ['week', 'all', 'sizes'].includes(s.panelSource) ? s.panelSource : 'week';
     S.apiUrl = s.apiUrl || null;
     S.weekId = s.selectedBatchId || null;
     S.activeKey = s.linkingKey || null;
     S.collapsed = !!s.panelCollapsed;
     S.skipped = s.panelSkipped || [];
+    S.noSizes = s.noOtherSizes || [];
     if (s.panelCache && s.panelCache.weekId === S.weekId && (s.panelCache.source || 'week') === S.source) {
       S.list = s.panelCache.list;
       S.weeks = s.panelCache.weeks || [];
@@ -369,7 +370,7 @@
         await chrome.storage.local.set({ selectedBatchId: S.weekId });
       }
       if (S.source === 'sizes') {
-        const rows = await api('/api/link-queue?sizes=1');
+        const rows = (await api('/api/link-queue?sizes=1')).filter(r => !S.noSizes.includes(r.ingredientKey));
         const amt = (n, u) => n >= 1000 ? `${n / 1000}${u === 'g' ? 'kg' : 'l'}` : `${n}${u}`;
         S.list = {
           unlinked: rows.map(r => ({
@@ -436,6 +437,18 @@
   async function skip() {
     if (S.activeKey && !S.skipped.includes(S.activeKey)) S.skipped.push(S.activeKey);
     await chrome.storage.local.set({ panelSkipped: S.skipped });
+    await getNext();
+  }
+
+  // Smaller sizes tab: nothing smaller exists, stop listing this one
+  async function noOtherSizes() {
+    const key = S.activeKey;
+    if (!key) return;
+    if (!S.noSizes.includes(key)) S.noSizes.push(key);
+    await chrome.storage.local.set({ noOtherSizes: S.noSizes });
+    S.list.unlinked = S.list.unlinked.filter(u => u.key !== key);
+    S.sizesCount = S.list.unlinked.length;
+    await saveCache();
     await getNext();
   }
 
@@ -673,7 +686,9 @@
         <div class="row">
           <button class="secondary" data-a="next">Get next</button>
           <button class="ghost" data-a="skip">Skip</button>
-          <button class="ghost" data-a="always" title="Always in the cupboard - leave off future lists">Always have</button>
+          ${S.source === 'sizes'
+            ? '<button class="ghost" data-a="nosizes" title="No smaller pack exists - stop listing this">No other sizes</button>'
+            : '<button class="ghost" data-a="always" title="Always in the cupboard - leave off future lists">Always have</button>'}
         </div>`;
     } else if (L.unlinked.length) {
       activeHtml = `<button class="primary" data-a="next">Start linking (${L.unlinked.length} to go)</button>`;
@@ -685,7 +700,7 @@
 
     const weekOpts = S.weeks.map(w => `<option value="${esc(w.id)}"${w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('');
     const tab = (src, label, n) => `<button class="tab${S.source === src ? ' on' : ''}" data-src="${src}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
-    const tabsHtml = `<div class="tabs">${tab('week', 'This week')}${tab('all', 'All recipes')}${tab('sizes', 'Smaller sizes', S.sizesCount)}${tab('queue', 'Queue', S.queueCount)}</div>`;
+    const tabsHtml = `<div class="tabs">${tab('week', 'This week')}${tab('all', 'All recipes')}${tab('sizes', 'Smaller sizes', S.sizesCount)}</div>`;
     const progress = S.source === 'sizes'
       ? `${L.unlinked.length} item${L.unlinked.length === 1 ? '' : 's'} where a smaller pack would save waste`
       : S.source === 'queue'
@@ -705,8 +720,9 @@
           <div><div class="bar"><span style="width:${total ? Math.round(done / total * 100) : 0}%"></span></div><span class="sub">${esc(progress)}</span></div>
           <div class="active">${activeHtml}</div>
           ${S.msg ? `<div class="msg ${S.msgOk ? 'ok' : 'err'}">${esc(S.msg)}</div>` : ''}
-          <details${!S.activeKey && L.unlinked.length ? ' open' : ''}><summary>Needs linking (${L.unlinked.length})</summary><ul>${todo || '<li class="empty">Nothing left</li>'}</ul></details>
-          <details><summary>Linked (${L.linked.length})</summary><ul>${linked || '<li class="empty">None yet</li>'}</ul></details>
+          <input id="q" type="search" placeholder="Search needs linking and linked" value="${esc(S.q)}" autocomplete="off">
+          <details${(!S.activeKey && L.unlinked.length) || S.q ? ' open' : ''}><summary>Needs linking (${L.unlinked.length})</summary><ul>${todo || '<li class="empty">Nothing left</li>'}</ul></details>
+          <details${S.q ? ' open' : ''}><summary>Linked (${L.linked.length})</summary><ul>${linked || '<li class="empty">None yet</li>'}</ul></details>
           <div class="row" style="gap:14px">
             <button class="textbtn" data-a="refresh">Refresh list</button>
             <button class="textbtn" data-a="prices"${S.busy ? ' disabled' : ''}>Update prices</button>
@@ -729,6 +745,7 @@
       if (a === 'next') return getNext();
       if (a === 'skip') return skip();
       if (a === 'always') return alwaysHave();
+      if (a === 'nosizes') return noOtherSizes();
       if (a === 'search') { location.href = searchUrl(S.activeKey); return; }
       if (a === 'refresh') { setMsg(''); return refresh(); }
       if (a === 'prices') return refreshPrices();
@@ -754,6 +771,21 @@
       refresh();
     };
     root.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { if (b.dataset.src !== S.source) switchTo(b.dataset.src); }));
+    const q = root.getElementById('q');
+    const applyFilter = () => {
+      const t = S.q.trim().toLowerCase();
+      root.querySelectorAll('li.todo, li.done').forEach(li => { li.style.display = !t || li.textContent.toLowerCase().includes(t) ? '' : 'none'; });
+    };
+    if (q) {
+      // Filter in place so typing never re-renders (and loses focus)
+      q.addEventListener('input', () => {
+        S.q = q.value;
+        if (S.q) root.querySelectorAll('details').forEach(d => { d.open = true; });
+        applyFilter();
+      });
+      ['keydown', 'keyup', 'keypress'].forEach(ev => q.addEventListener(ev, e => e.stopPropagation()));
+      applyFilter();
+    }
     const wk = root.getElementById('week');
     if (wk) wk.addEventListener('change', () => switchTo('week', wk.value));
   }
