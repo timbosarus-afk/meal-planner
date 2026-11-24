@@ -64,7 +64,7 @@ export default function CanMake() {
   }
 
   return (
-    <div className="page">
+    <div className="page narrow">
       <PageHeader title="What can I make?" onBack={canBack ? back : undefined} subtitle={res.data ? `Checked ${res.data.recipeCount} recipes against ${res.data.pantryCount} pantry items` : null} />
       {body}
     </div>

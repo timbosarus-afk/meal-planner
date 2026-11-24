@@ -142,7 +142,7 @@ export default function Shopping() {
   }
 
   return (
-    <div className="page">
+    <div className="page narrow">
       <PageHeader title="Shopping" />
       {weeks && weeks.length > 0 && <div className="mb-3"><WeekSelect /></div>}
       {body}

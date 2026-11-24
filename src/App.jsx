@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import BottomBar from './components/BottomBar.jsx';
+import Sidebar from './components/Sidebar.jsx';
 import { PrefsProvider, usePrefs } from './lib/prefs.jsx';
 import { WeeksProvider } from './lib/weeks.jsx';
 import { NavContext } from './lib/nav.js';
@@ -44,6 +45,8 @@ function Shell() {
 
   const nav = useMemo(() => ({
     go: key => { setStack([]); setFrom(bar.includes(key) || key === 'more' ? null : tab); setTab(key); },
+    // Desktop sidebar: every page is top level, so no "back to More"
+    goTop: key => { setStack([]); setFrom(null); setTab(key); },
     push: (screen, props = {}) => { setStack(s => [...s, { screen, props, scroll: window.scrollY }]); window.scrollTo(0, 0); },
     back: () => {
       if (stack.length) {
@@ -64,8 +67,11 @@ function Shell() {
 
   return (
     <NavContext.Provider value={nav}>
-      <div style={{ display: Screen ? 'none' : 'block' }}><Page /></div>
-      {Screen && <Screen key={stack.length} {...top.props} />}
+      {!(Screen && Screen.fullscreen) && <Sidebar active={tab} onSelect={nav.goTop} />}
+      <div className={Screen && Screen.fullscreen ? '' : 'lg:pl-[248px]'}>
+        <div style={{ display: Screen ? 'none' : 'block' }}><Page /></div>
+        {Screen && <Screen key={stack.length} {...top.props} />}
+      </div>
       {!(Screen && Screen.fullscreen) && <BottomBar tabs={bar} active={activeBar} onSelect={nav.go} />}
     </NavContext.Provider>
   );

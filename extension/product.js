@@ -547,51 +547,55 @@
 
   // ---- Side panel: UI -----------------------------------------------------
 
-  const TICK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  const TICK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   const MINIMISE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
 
   const CSS = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
-    .panel { width: 300px; max-height: 72vh; display: flex; flex-direction: column; background: #fff; color: #1F2A1E; border: 1px solid #D5DCD0; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.18); overflow: hidden; font-size: 13px; }
-    header { display: flex; align-items: center; justify-content: space-between; background: #1B4D3E; color: #fff; padding: 10px 12px; }
-    .title { font-weight: 700; font-size: 14px; }
+    .panel { width: 370px; max-height: 80vh; display: flex; flex-direction: column; background: #fff; color: #1F2A1E; border: 1px solid #D5DCD0; border-radius: 16px; box-shadow: 0 12px 36px rgba(0,0,0,.2); overflow: hidden; font-size: 15px; line-height: 1.4; }
+    header { display: flex; align-items: center; justify-content: space-between; background: #1B4D3E; color: #fff; padding: 12px 14px; }
+    .title { font-weight: 700; font-size: 17px; }
     .icon { background: none; border: 0; color: #fff; cursor: pointer; padding: 2px; display: flex; }
-    .body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    select, input { width: 100%; padding: 6px 8px; border: 1px solid #C9D0C2; border-radius: 6px; font-size: 13px; background: #fff; color: inherit; margin-top: 2px; }
-    .bar { height: 6px; background: #E6ECE3; border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: #EEF3EF; padding: 4px; border-radius: 10px; }
+    .tab { background: transparent; color: #4A5546; font-size: 13px; font-weight: 700; padding: 8px 4px; border-radius: 7px; line-height: 1.15; }
+    .tab.on { background: #fff; color: #1B4D3E; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .tab .n { display: block; font-size: 11px; font-weight: 600; color: #6B7566; }
+    .body { padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    select, input { width: 100%; padding: 9px 10px; border: 1px solid #C9D0C2; border-radius: 8px; font-size: 15px; background: #fff; color: inherit; margin-top: 3px; }
+    .bar { height: 8px; background: #E6ECE3; border-radius: 99px; overflow: hidden; margin-bottom: 5px; }
     .bar span { display: block; height: 100%; background: #1B4D3E; transition: width .3s; }
-    .sub { font-size: 11px; color: #6B7566; display: block; }
-    .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #6B7566; }
-    .key { font-size: 17px; font-weight: 700; color: #1B4D3E; }
-    .active { display: flex; flex-direction: column; gap: 6px; background: #F4F8F2; border-radius: 10px; padding: 10px; }
-    button { cursor: pointer; border-radius: 8px; font-weight: 700; font-size: 13px; padding: 8px 10px; border: 0; }
+    .sub { font-size: 13px; color: #5E6B66; display: block; }
+    .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #5E6B66; font-weight: 700; }
+    .key { font-size: 21px; font-weight: 800; color: #1B4D3E; line-height: 1.2; }
+    .active { display: flex; flex-direction: column; gap: 8px; background: #F4F8F2; border-radius: 12px; padding: 12px; }
+    button { cursor: pointer; border-radius: 9px; font-weight: 700; font-size: 15px; padding: 10px 12px; border: 0; }
     button:disabled { opacity: .5; cursor: default; }
     .primary { background: #1B4D3E; color: #fff; width: 100%; }
-    .secondary { background: #fff; color: #1B4D3E; border: 1.5px solid #1B4D3E; flex: 1; }
-    .ghost { background: transparent; color: #6B7566; border: 1px solid #C9D0C2; font-weight: 600; }
+    .secondary { background: #fff; color: #1B4D3E; border: 2px solid #1B4D3E; flex: 1; }
+    .ghost { background: transparent; color: #4A5546; border: 1px solid #C9D0C2; font-weight: 600; }
     .row { display: flex; gap: 6px; }
-    .prod { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #DDE5D8; padding-top: 8px; }
-    .pname { font-weight: 600; }
-    .pack { display: flex; gap: 6px; }
-    .pack label { flex: 1; font-size: 11px; color: #6B7566; }
-    .hint { margin: 0; font-size: 12px; color: #4A5546; }
-    .msg { font-size: 12px; padding: 6px 8px; border-radius: 6px; }
+    .prod { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #DDE5D8; padding-top: 10px; }
+    .pname { font-weight: 700; }
+    .pack { display: flex; gap: 8px; }
+    .pack label { flex: 1; font-size: 13px; color: #5E6B66; }
+    .hint { margin: 0; font-size: 14px; color: #3E4A3B; }
+    .msg { font-size: 14px; padding: 8px 10px; border-radius: 8px; }
     .msg.ok { background: #DDEEE4; color: #1B4D3E; }
     .msg.err { background: #F9DEDC; color: #B3261E; }
-    details summary { cursor: pointer; font-weight: 700; font-size: 12px; color: #4A5546; padding: 4px 0; }
+    details summary { cursor: pointer; font-weight: 700; font-size: 15px; color: #3E4A3B; padding: 6px 0; }
     ul { list-style: none; margin: 4px 0 0; padding: 0; }
-    li { padding: 6px 4px; border-bottom: 1px solid #EEF2EC; cursor: pointer; font-size: 12px; }
+    li { padding: 8px 6px; border-bottom: 1px solid #EEF2EC; cursor: pointer; font-size: 14px; }
     li:hover { background: #F4F8F2; }
     li.on { font-weight: 700; color: #1B4D3E; }
-    li.skipped { color: #9AA394; }
-    li.done { display: flex; gap: 6px; align-items: flex-start; }
+    li.skipped { color: #8A9585; }
+    li.done { display: flex; gap: 8px; align-items: flex-start; }
     li.done > span:last-child { order: 2; flex: 1; }
-    .unlink { order: 3; background: none; color: #B3261E; font-weight: 600; font-size: 11px; padding: 0 2px; text-decoration: underline; }
-    .tick { color: #1B4D3E; flex: none; margin-top: 1px; }
-    li.empty { color: #9AA394; cursor: default; }
-    .textbtn { background: none; color: #6B7566; font-weight: 600; font-size: 12px; text-decoration: underline; padding: 0; align-self: flex-start; }
-    .pill { background: #1B4D3E; color: #fff; border-radius: 999px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+    .tick { color: #1B4D3E; flex: none; margin-top: 2px; }
+    .unlink { order: 3; background: none; color: #B3261E; font-weight: 700; font-size: 13px; padding: 0 2px; text-decoration: underline; }
+    li.empty { color: #8A9585; cursor: default; }
+    .textbtn { background: none; color: #4A5546; font-weight: 600; font-size: 14px; text-decoration: underline; padding: 0; align-self: flex-start; }
+    .pill { background: #1B4D3E; color: #fff; border-radius: 999px; padding: 12px 18px; font-size: 15px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
   `;
 
   function fmtWeek(w) {
@@ -679,10 +683,9 @@
         : `<p class="hint">${S.source === 'all' ? 'Every ingredient across your recipes is linked.' : S.source === 'sizes' ? 'No items need a smaller size.' : 'Nothing left in the queue.'}</p>`;
     }
 
-    const weekOpts = S.weeks.map(w => `<option value="week:${esc(w.id)}"${S.source === 'week' && w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('')
-      + `<option value="queue"${S.source === 'queue' ? ' selected' : ''}>Queued from app${S.queueCount != null ? ` (${S.queueCount})` : ''}</option>`
-      + `<option value="all"${S.source === 'all' ? ' selected' : ''}>All recipes - link everything</option>`
-      + `<option value="sizes"${S.source === 'sizes' ? ' selected' : ''}>Needs a smaller size${S.sizesCount != null ? ` (${S.sizesCount})` : ''}</option>`;
+    const weekOpts = S.weeks.map(w => `<option value="${esc(w.id)}"${w.id === S.weekId ? ' selected' : ''}>${esc(fmtWeek(w))}</option>`).join('');
+    const tab = (src, label, n) => `<button class="tab${S.source === src ? ' on' : ''}" data-src="${src}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
+    const tabsHtml = `<div class="tabs">${tab('week', 'This week')}${tab('all', 'All recipes')}${tab('sizes', 'Smaller sizes', S.sizesCount)}${tab('queue', 'Queue', S.queueCount)}</div>`;
     const progress = S.source === 'sizes'
       ? `${L.unlinked.length} item${L.unlinked.length === 1 ? '' : 's'} where a smaller pack would save waste`
       : S.source === 'queue'
@@ -697,7 +700,8 @@
       <div class="panel">
         <header><span class="title">Meal planner</span><button class="icon" data-a="collapse" title="Minimise">${MINIMISE}</button></header>
         <div class="body">
-          <select id="week" title="Which list to work through">${weekOpts}</select>
+          ${tabsHtml}
+          ${S.source === 'week' && S.weeks.length > 1 ? `<select id="week" title="Which week">${weekOpts}</select>` : ''}
           <div><div class="bar"><span style="width:${total ? Math.round(done / total * 100) : 0}%"></span></div><span class="sub">${esc(progress)}</span></div>
           <div class="active">${activeHtml}</div>
           ${S.msg ? `<div class="msg ${S.msgOk ? 'ok' : 'err'}">${esc(S.msg)}</div>` : ''}
@@ -741,16 +745,17 @@
     root.querySelectorAll('li.todo').forEach(li => li.addEventListener('click', () => { setMsg(''); setActive(li.dataset.key, true); }));
     root.querySelectorAll('li.done').forEach(li => li.addEventListener('click', () => { if (li.dataset.url) location.href = pageUrl(li.dataset.url); }));
     root.querySelectorAll('.unlink').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); unlink(btn.dataset.id); }));
-    const wk = root.getElementById('week');
-    if (wk) wk.addEventListener('change', async () => {
-      const v = wk.value;
-      if (v.startsWith('week:')) { S.source = 'week'; S.weekId = v.slice(5); }
-      else S.source = v;
+    const switchTo = async (source, weekId) => {
+      S.source = source;
+      if (weekId) S.weekId = weekId;
       S.skipped = [];
       setMsg('');
       await chrome.storage.local.set({ panelSource: S.source, selectedBatchId: S.weekId, panelSkipped: [] });
       refresh();
-    });
+    };
+    root.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { if (b.dataset.src !== S.source) switchTo(b.dataset.src); }));
+    const wk = root.getElementById('week');
+    if (wk) wk.addEventListener('change', () => switchTo('week', wk.value));
   }
 
   // "Link this" button under every product card while an item is active
@@ -767,7 +772,7 @@
         btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'mp-link-btn';
-        btn.style.cssText = 'display:block;width:calc(100% - 16px);margin:8px;padding:8px;border:2px solid #1B4D3E;background:#fff;color:#1B4D3E;border-radius:6px;font:700 13px/1.2 -apple-system,"Segoe UI",sans-serif;cursor:pointer;';
+        btn.style.cssText = 'display:block;width:calc(100% - 16px);margin:8px;padding:8px;border:2px solid #1B4D3E;background:#fff;color:#1B4D3E;border-radius:6px;font:700 14px/1.25 -apple-system,"Segoe UI",sans-serif;cursor:pointer;';
         btn.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();

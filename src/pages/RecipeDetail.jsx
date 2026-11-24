@@ -20,7 +20,7 @@ function Hero({ recipe, onPhoto, uploading }) {
   if (recipe.image_url) {
     return (
       <div className="relative mb-4 rounded-3xl overflow-hidden" style={{ boxShadow: 'var(--shadow)' }}>
-        <RecipeThumb recipe={recipe} rounded="" className="w-full h-[260px]" iconSize={44} />
+        <RecipeThumb recipe={recipe} rounded="" className="w-full h-[260px] lg:h-[380px]" iconSize={44} />
         <button onClick={pick} disabled={uploading} className="absolute bottom-3 right-3 btn py-2 px-3 text-[13px] bg-white/90 backdrop-blur" style={{ color: 'var(--green)' }}>
           <Camera size={16} />{uploading ? 'Uploading…' : 'Change photo'}
         </button>
@@ -184,14 +184,27 @@ export default function RecipeDetail({ id, servings: initialServings }) {
         );
       })()}
 
-      <div className="mb-4">
-        <Segmented value={tab} onChange={setTab} options={[{ value: 'ingredients', label: 'Ingredients', icon: ListChecks }, { value: 'cook', label: 'How to Cook', icon: CookingPot }]} />
+      {/* Phone: tabs. Desktop: ingredients and method side by side. */}
+      <div className="lg:hidden">
+        <div className="mb-4">
+          <Segmented value={tab} onChange={setTab} options={[{ value: 'ingredients', label: 'Ingredients', icon: ListChecks }, { value: 'cook', label: 'How to Cook', icon: CookingPot }]} />
+        </div>
+        {tab === 'ingredients'
+          ? <Ingredients recipe={r} target={serves} />
+          : <CookSteps recipe={r} steps={getSteps(r)} />}
+      </div>
+      <div className="hidden lg:grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-8 items-start">
+        <div className="lg:sticky lg:top-6">
+          <h2 className="font-display font-extrabold text-[20px] mb-3 flex items-center gap-2" style={{ color: 'var(--green)' }}><ListChecks size={20} />Ingredients</h2>
+          <Ingredients recipe={r} target={serves} />
+        </div>
+        <div>
+          <h2 className="font-display font-extrabold text-[20px] mb-3 flex items-center gap-2" style={{ color: 'var(--green)' }}><CookingPot size={20} />How to cook</h2>
+          <CookSteps recipe={r} steps={getSteps(r)} />
+        </div>
       </div>
 
-      {tab === 'ingredients'
-        ? <Ingredients recipe={r} target={serves} />
-        : <CookSteps recipe={r} steps={getSteps(r)} />}
-
+      <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
       <section className="card p-4 mt-6">
         <div className="flex items-center gap-2 mb-1"><ChefHat size={18} style={{ color: 'var(--green)' }} /><span className="font-display font-bold text-[17px]">Your rating</span></div>
         <Rating value={r.rating} onChange={v => update({ local: { rating: v }, body: { rating: v } })} />
@@ -199,6 +212,7 @@ export default function RecipeDetail({ id, servings: initialServings }) {
       </section>
 
       <NotLinked ingredients={r.ingredients} />
+      </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={displayName(r)}>
         <div className="grid gap-2">

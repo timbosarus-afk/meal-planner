@@ -130,7 +130,7 @@ function Reminder() {
 export default function Settings() {
   const { back, canBack } = useNav();
   return (
-    <div className="page">
+    <div className="page narrow">
       <PageHeader title="Settings" onBack={canBack ? back : undefined} />
       <TabPicker />
       <Reminder />
