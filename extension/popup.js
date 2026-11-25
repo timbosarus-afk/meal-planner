@@ -173,7 +173,7 @@ function renderUnlinked(unlinked) {
 // read-only; nothing changes until you tick things and press Apply. Only
 // products you've linked are ever touched, and removals are always ticked by hand.
 
-const TROLLEY_URL = 'https://www.sainsburys.co.uk/groceries/trolley';
+const TROLLEY_URL = 'https://www.sainsburys.co.uk/gol-ui/trolley';
 let syncState = null;
 
 async function tabIsTrolley(tabId) {
