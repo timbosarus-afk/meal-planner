@@ -26,6 +26,10 @@
   .status { font-size: 11px; margin-top: 6px; color: #6B7566; min-height: 14px; }
   .list { max-height: 220px; overflow-y: auto; }
   .empty { font-size: 12px; color: #6B7566; padding: 6px 0; }
+  .sync label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #1F2A1E; padding: 4px 0; }
+  .sync label input { width: auto; margin: 0; }
+  .sync h3 { font-size: 11px; margin: 10px 0 2px; color: #1B4D3E; }
+  .sync .note { font-size: 10px; color: #6B7566; }
 </style>
 </head>
 <body>
@@ -43,6 +47,12 @@
 
   <div id="runSection"></div>
 
+  <h2><span>Sync basket</span></h2>
+  <div class="sync" id="syncSection">
+    <button class="secondary" id="syncBtn" disabled>Check my trolley against this week</button>
+    <div id="syncPlan"></div>
+  </div>
+
   <h2><span>Ready to add</span><span id="basketCount"></span></h2>
   <div class="list" id="basketList"></div>
   <button id="addAllBtn" disabled>Add all to basket</button>
@@ -50,6 +60,7 @@
   <h2><span>Needs linking</span><span id="unlinkedCount"></span></h2>
   <div class="list" id="unlinkedList"></div>
 
+  <script src="syncplan.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -99,6 +99,8 @@ async function loadList() {
     await chrome.storage.local.set({ unlinkedKeys: data.unlinked.map(u => u.ingredientKey) });
     renderBasket(data.basket);
     renderUnlinked(data.unlinked);
+    $('syncBtn').disabled = false;
+    $('syncPlan').innerHTML = '';
     statusEl.textContent = '';
   } catch (err) {
     statusEl.textContent = err.message;
@@ -164,6 +166,116 @@ function renderUnlinked(unlinked) {
       statusEl.textContent = `Couldn't save staple: ${err.message}`;
     }
   }));
+}
+
+// ---- Sync basket ----------------------------------------------------------
+// Compares the live Sainsbury's trolley with this week's list. Checking is
+// read-only; nothing changes until you tick things and press Apply. Only
+// products you've linked are ever touched, and removals are always ticked by hand.
+
+const TROLLEY_URL = 'https://www.sainsburys.co.uk/groceries/trolley';
+let syncState = null;
+
+async function tabIsTrolley(tabId) {
+  try { const t = await chrome.tabs.get(tabId); return /\/(?:gol-ui|groceries)\/trolley/.test(t.url || ''); } catch { return false; }
+}
+
+async function askTrolley(message) {
+  // Make sure the shopping tab is on the trolley, then retry while the page script wakes up
+  const { shoppingTabId } = await chrome.storage.local.get('shoppingTabId');
+  let tabId = shoppingTabId;
+  let onTrolley = tabId ? await tabIsTrolley(tabId) : false;
+  if (!onTrolley) {
+    await openInShoppingTab(TROLLEY_URL);
+    tabId = (await chrome.storage.local.get('shoppingTabId')).shoppingTabId;
+    await new Promise(r => setTimeout(r, 2500));
+  }
+  let lastErr = 'No answer from the trolley page';
+  for (let i = 0; i < 12; i++) {
+    try {
+      const res = await chrome.tabs.sendMessage(tabId, message);
+      if (res && res.ok) return res;
+      lastErr = (res && res.error) || lastErr;
+    } catch (e) { lastErr = 'Trolley page not ready (sign in to Sainsbury\'s if it asks)'; }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  throw new Error(lastErr);
+}
+
+$('syncBtn').addEventListener('click', async () => {
+  if (!currentList) return;
+  const apiUrl = await getApiUrl();
+  $('syncBtn').disabled = true;
+  $('syncPlan').innerHTML = '<div class="empty">Reading your trolley…</div>';
+  try {
+    const [trolleyRes, linksRes] = await Promise.all([
+      askTrolley({ type: 'mp-read-trolley' }),
+      fetch(`${apiUrl}/api/product-links`).then(r => r.json())
+    ]);
+    const plan = syncPlan.computePlan({ basket: currentList.basket, allLinks: Array.isArray(linksRes) ? linksRes : [], trolley: trolleyRes.rows });
+    syncState = { plan, rows: trolleyRes.rows };
+    renderSyncPlan();
+  } catch (err) {
+    $('syncPlan').innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`;
+  }
+  $('syncBtn').disabled = false;
+});
+
+function renderSyncPlan(extraHtml = '') {
+  const { plan } = syncState;
+  const row = (kind, i, label, sub, checked) => `
+    <label><input type="checkbox" data-kind="${kind}" data-i="${i}" ${checked ? 'checked' : ''}>
+      <span>${label}${sub ? `<div class="note">${sub}</div>` : ''}</span></label>`;
+  const fixes = [
+    ...plan.add.map((p, i) => row('add', i, `Add ${p.want} x ${escapeHtml(p.name || p.key)}`, `for: ${escapeHtml(p.entry.items.join(', '))}`, true)),
+    ...plan.more.map((p, i) => row('more', i, `${escapeHtml(p.name)}: ${p.have} → ${p.want}`, 'add more', true)),
+    ...plan.fewer.map((p, i) => row('fewer', i, `${escapeHtml(p.name)}: ${p.have} → ${p.want}`, 'trolley has more than needed', true))
+  ];
+  const extras = plan.extras.map((e, i) => row('extra', i, `Remove ${e.have} x ${escapeHtml(e.name)}`, 'linked product, not on this week\'s list', false));
+  const nothing = !fixes.length && !extras.length;
+  $('syncPlan').innerHTML = `
+    <div class="note" style="margin-top:6px">${plan.ok.length} already right${plan.ignored.length ? `, ${plan.ignored.length} other trolley item${plan.ignored.length > 1 ? 's' : ''} left alone` : ''}</div>
+    ${fixes.length ? `<h3>Fixes</h3>${fixes.join('')}` : ''}
+    ${extras.length ? `<h3>Not on this week's list (ticked ones are removed)</h3>${extras.join('')}` : ''}
+    ${nothing ? '<div class="empty">Your trolley already matches this week.</div>' : '<button id="syncApplyBtn">Apply ticked changes</button>'}
+    ${extraHtml}`;
+  const btn = $('syncApplyBtn');
+  if (btn) btn.onclick = applySync;
+}
+
+async function applySync() {
+  const { plan } = syncState;
+  const ticked = kind => [...$('syncPlan').querySelectorAll(`input[data-kind="${kind}"]`)].filter(c => c.checked).map(c => Number(c.dataset.i));
+  const filtered = {
+    ...plan,
+    more: ticked('more').map(i => plan.more[i]),
+    fewer: ticked('fewer').map(i => plan.fewer[i])
+  };
+  const removeNames = ticked('extra').map(i => plan.extras[i].name);
+  const adjustments = syncPlan.trolleyAdjustments(filtered, removeNames);
+  const toAdd = ticked('add').map(i => plan.add[i]);
+
+  $('syncApplyBtn').disabled = true;
+  $('syncPlan').insertAdjacentHTML('beforeend', '<div class="empty" id="syncBusy">Working on your trolley… leave the Sainsbury\'s tab alone.</div>');
+  try {
+    let failed = [];
+    if (adjustments.length) {
+      const res = await askTrolley({ type: 'mp-adjust-trolley', adjustments });
+      failed = res.results.filter(r => r.status === 'failed');
+    }
+    if (toAdd.length) {
+      // Missing products go through the normal basket run (opens each product and adds it)
+      const apiUrl = await getApiUrl();
+      const queue = toAdd.map(p => ({ linkId: p.entry.linkId, ingredientKey: p.entry.ingredientKey, productUrl: p.entry.productUrl, productSlug: p.entry.productSlug, productName: p.entry.productName, packs: p.want }));
+      await chrome.storage.local.set({ basketRun: { active: true, queue, index: 0, results: [], apiUrl, batchId: batchSelect.value, startedAt: Date.now() } });
+      await openInShoppingTab(queue[0].productUrl);
+      $('syncPlan').innerHTML = `<div class="empty">Quantities fixed${failed.length ? ` (${failed.length} couldn't be changed)` : ''}. Adding ${queue.length} missing item${queue.length > 1 ? 's' : ''} now: watch the Sainsbury's tab.</div>`;
+      return;
+    }
+    $('syncPlan').innerHTML = `<div class="empty">Done${failed.length ? `, but ${failed.length} couldn't be changed: ${failed.map(f => escapeHtml(f.name)).join(', ')}` : ''}. Press Check again to confirm.</div>`;
+  } catch (err) {
+    $('syncPlan').innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`;
+  }
 }
 
 // ---- Basket run -----------------------------------------------------------
