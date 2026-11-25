@@ -909,6 +909,69 @@
     }, 400);
   }).observe(document.documentElement, { childList: true, subtree: true });
 
+  // ---- Trolley sync (the popup asks; nothing here runs on its own) --------
+  // Reads the trolley, and nudges quantities with its own + / - buttons.
+
+  const TROLLEY_ROW = '[data-testid="trolley-item"]';
+  const isTrolleyPage = () => /\/(?:gol-ui|groceries)\/trolley/.test(location.pathname);
+  const normName = s => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const rowName = r => r.querySelector('[data-testid="trolley-item-description"]')?.innerText.trim() || '';
+  const rowQty = r => {
+    const label = r.querySelector('[data-testid="pt-button-quantity"]')?.getAttribute('aria-label') || '';
+    const n = Number((label.match(/^(\d+)/) || [])[1]);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  // The list loads in lazily: scroll down until the row count stops growing
+  async function readTrolley() {
+    await waitFor(() => document.querySelector(TROLLEY_ROW), 10000);
+    let last = -1;
+    for (let i = 0; i < 12; i++) {
+      const n = document.querySelectorAll(TROLLEY_ROW).length;
+      if (n === last) break;
+      last = n;
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(700);
+    }
+    window.scrollTo(0, 0);
+    return [...document.querySelectorAll(TROLLEY_ROW)].map(r => ({ name: rowName(r), qty: rowQty(r) })).filter(r => r.name);
+  }
+
+  const findRow = name => [...document.querySelectorAll(TROLLEY_ROW)].find(r => normName(rowName(r)) === normName(name));
+
+  // Step one row to its target with the + / - buttons (0 = remove)
+  async function setRowQty(name, target) {
+    for (let guard = 0; guard < 40; guard++) {
+      const row = findRow(name);
+      const have = row ? rowQty(row) : 0;
+      if (!row) return { name, target, status: target === 0 ? 'removed' : 'failed', note: target === 0 ? '' : 'Not in trolley' };
+      if (have === target) return { name, target, status: 'done' };
+      const btn = row.querySelector(have < target ? '[data-testid="pt-button-inc"]' : '[data-testid="pt-button-dec"]');
+      if (!btn) return { name, target, status: 'failed', note: "Couldn't find the + / - button" };
+      btn.click();
+      // wait for the page to reflect the change (row count or quantity)
+      const before = have;
+      const changed = await waitFor(() => { const r = findRow(name); return !r || rowQty(r) !== before; }, 8000);
+      if (!changed) return { name, target, status: 'failed', note: "Quantity didn't change" };
+      await sleep(500);
+    }
+    return { name, target, status: 'failed', note: 'Gave up' };
+  }
+
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((msg, _sender, send) => {
+      if (!msg || (msg.type !== 'mp-read-trolley' && msg.type !== 'mp-adjust-trolley')) return false;
+      (async () => {
+        if (!isTrolleyPage()) { send({ ok: false, error: 'Open the trolley page first' }); return; }
+        if (msg.type === 'mp-read-trolley') { send({ ok: true, rows: await readTrolley() }); return; }
+        const results = [];
+        for (const a of msg.adjustments || []) results.push(await setRowQty(a.name, a.target));
+        send({ ok: true, results, rows: await readTrolley() });
+      })().catch(e => send({ ok: false, error: e.message }));
+      return true; // async response
+    });
+  }
+
   // ---- Routing (SPA-aware) ------------------------------------------------
 
   let lastPath = null;
